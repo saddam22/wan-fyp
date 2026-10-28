@@ -5,8 +5,7 @@ Part of the WANBAHJAHKAS ecosystem. Students (and guardians) order assignments, 
 ## Current state (2026-10-28)
 
 - **Phase 0 complete:** all 8 accessible repositories audited by reading source; mockups reviewed; 309 features tracked.
-- No EduKhata code exists yet. Nothing has been built, run or deployed.
-- Phase 1 (frontend) can start; HD mockups (Q12) are still needed for faithful dashboards.
+- **Phase 1 frontend complete — waiting for owner review (STOP gate).** 111 pages, demo data only, no backend, nothing deployed. See `FRONTEND_AUDIT.md` → Phase 1 and `TESTING_REPORT.md`.
 
 ## How to resume in a new session
 
@@ -16,37 +15,38 @@ Part of the WANBAHJAHKAS ecosystem. Students (and guardians) order assignments, 
 
 ## Documents
 
-| File | Content |
-|---|---|
-| MODULE_INVENTORY.md | What each ecosystem repo really contains; what is missing |
-| EXISTING_MODULE_REUSE_MATRIX.md | Reuse decision per capability (8-point analysis) |
-| ARCHITECTURE.md | Proposed stack and domain rules |
-| IDENTITY_INTEGRATION.md | WAN Identity Hub flow + required hub changes |
-| ADVERTISING_INTEGRATION.md | Ad placements; ads vs boosts vs verification |
-| PAYMENT_AND_COMMISSION.md | ICTSpark manual flow, fixes, ledger model, policy questions |
-| CHAT_AND_COMMUNICATION_INTEGRATION.md | Chat, calls, notifications fit |
-| FRONTEND_AUDIT.md | Mockup reading, design tokens, conflicts, route inventory |
-| BACKEND_API_AUDIT.md / DATABASE_AUDIT.md | Existing contracts and schemas |
-| SECURITY_AUDIT.md | Findings in existing modules |
-| FEATURE_TRACEABILITY_MATRIX.md | Every feature with ID and status (generated) |
-| ACCEPTANCE_CRITERIA.md | Project and module acceptance |
-| IMPLEMENTATION_ROADMAP.md | Phases and gates |
-| TESTING_REPORT.md / DEPLOYMENT_GUIDE.md | Filled from Phase 1 / Phase 8 |
+| File                                     | Content                                                     |
+| ---------------------------------------- | ----------------------------------------------------------- |
+| MODULE_INVENTORY.md                      | What each ecosystem repo really contains; what is missing   |
+| EXISTING_MODULE_REUSE_MATRIX.md          | Reuse decision per capability (8-point analysis)            |
+| ARCHITECTURE.md                          | Proposed stack and domain rules                             |
+| IDENTITY_INTEGRATION.md                  | WAN Identity Hub flow + required hub changes                |
+| ADVERTISING_INTEGRATION.md               | Ad placements; ads vs boosts vs verification                |
+| PAYMENT_AND_COMMISSION.md                | ICTSpark manual flow, fixes, ledger model, policy questions |
+| CHAT_AND_COMMUNICATION_INTEGRATION.md    | Chat, calls, notifications fit                              |
+| FRONTEND_AUDIT.md                        | Mockup reading, design tokens, conflicts, route inventory   |
+| BACKEND_API_AUDIT.md / DATABASE_AUDIT.md | Existing contracts and schemas                              |
+| SECURITY_AUDIT.md                        | Findings in existing modules                                |
+| FEATURE_TRACEABILITY_MATRIX.md           | Every feature with ID and status (generated)                |
+| ACCEPTANCE_CRITERIA.md                   | Project and module acceptance                               |
+| IMPLEMENTATION_ROADMAP.md                | Phases and gates                                            |
+| TESTING_REPORT.md / DEPLOYMENT_GUIDE.md  | Filled from Phase 1 / Phase 8                               |
 
-## Open decisions
+## Decisions
 
-| ID | Question | My recommendation | Blocks |
-|---|---|---|---|
-| Q1 | Where does EduKhata's code live? | **Decided 2026-10-28:** `saddam22/wan-fyp` repo | — |
-| Q2 | The 3rd mockup is **WAN FYP** (Final Year Project portal). In scope? | **Decided:** separate project, later — not part of EduKhata | — |
-| Q3 | Live Classes / Exams / Blog / Forum: link to ICTSpark, port, or drop from nav? | Blog + FAQ built in EduKhata; Live Classes/Exams link to ICTSpark or hidden | Nav |
-| Q4 | Students/guardians self-serve access; mentor and staff roles granted only inside EduKhata? | Yes | Phase 2 |
-| Q5 | Holding customer funds until approval ("Money Hold") — legally OK? | Get legal confirmation; until then mentor share released on approval from platform account | Phase 5 |
-| Q6–Q9 | Refund rules, fees/VAT, payout holding period/minimum, paid revision price, coupon funding | — | Phase 5 |
-| Q10 | Email and SMS providers | e.g. SES/Mailgun + a BD SMS gateway | Hub production, notifications |
-| Q11 | Call recording | Remove "with Recording" until a recording solution, consent and retention are approved | UI copy |
-| Q12 | HD originals of all mockups (incl. dashboard screens) | Needed for faithful dashboards | Phase 1 quality |
-| Q13 | Cart icon meaning | Replace with "My Orders" | Header |
+| ID    | Question                                                                     | Decision / recommendation                                                                | Blocks                        |
+| ----- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------- |
+| Q1    | Where does EduKhata's code live?                                             | **Decided:** `saddam22/wan-fyp`                                                          | —                             |
+| Q2    | WAN FYP mockup in scope?                                                     | **Decided:** separate project, later                                                     | —                             |
+| Q3    | Live Classes / Exams / Blog / Forum                                          | **Decided:** Blog + FAQ in EduKhata; Live Classes/Exams link to ICTSpark                 | —                             |
+| Q4    | Students/guardians self-serve; mentor & staff roles only granted in EduKhata | **Decided:** yes                                                                         | —                             |
+| Q5    | Holding customer funds until approval ("Money Hold") — legally OK?           | Open — get legal confirmation                                                            | Phase 5                       |
+| Q6–Q9 | Refund rules, fees/VAT, payout holding/minimum, paid revision price, coupons | Open — UI shows placeholders                                                             | Phase 5                       |
+| Q10   | Email and SMS providers                                                      | Open — e.g. SES/Mailgun + a BD SMS gateway                                               | Hub production, notifications |
+| Q11   | Call recording                                                               | **Decided:** removed from UI until a solution, consent and retention policy are approved | —                             |
+| Q12   | HD originals of all mockups                                                  | Open — still wanted to refine dashboards                                                 | Phase 1 polish                |
+| Q13   | Cart icon                                                                    | **Decided:** replaced with My Orders                                                     | —                             |
+| Q14   | Phase 1 frontend approval                                                    | **Waiting for owner review** (see FRONTEND_AUDIT → Phase 1)                              | Phase 2                       |
 
 ## Policy note
 

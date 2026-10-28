@@ -18,16 +18,16 @@ Status: **design only** (Phase 5).
 
 ## What EduKhata keeps, and what it fixes
 
-| ICTSpark behaviour | EduKhata |
-|---|---|
-| Method list, instructions, TrxID + sender, Bengali digit normalization | Keep |
-| Reject → resubmit | Keep |
-| Duplicate TrxID check in code | **DB unique index** on `(method, normalized_trx_id)` |
-| `/:id/manual` has no auth (guest checkout) | Require login + ownership (payer or linked guardian) |
-| No proof screenshot | Add optional proof upload (private storage, image/PDF sniffed) |
-| Admin verifies alone | **Accountant verifies**; amounts ≥ configurable threshold need a second approver (maker-checker, like ad-platform funding) |
-| Status set, side effects after | Status change + ledger entries + order transition in **one transaction** |
-| No accountant role | `accountant` role, no access to user management or settings |
+| ICTSpark behaviour                                                     | EduKhata                                                                                                                   |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Method list, instructions, TrxID + sender, Bengali digit normalization | Keep                                                                                                                       |
+| Reject → resubmit                                                      | Keep                                                                                                                       |
+| Duplicate TrxID check in code                                          | **DB unique index** on `(method, normalized_trx_id)`                                                                       |
+| `/:id/manual` has no auth (guest checkout)                             | Require login + ownership (payer or linked guardian)                                                                       |
+| No proof screenshot                                                    | Add optional proof upload (private storage, image/PDF sniffed)                                                             |
+| Admin verifies alone                                                   | **Accountant verifies**; amounts ≥ configurable threshold need a second approver (maker-checker, like ad-platform funding) |
+| Status set, side effects after                                         | Status change + ledger entries + order transition in **one transaction**                                                   |
+| No accountant role                                                     | `accountant` role, no access to user management or settings                                                                |
 
 ## Money model
 
@@ -43,10 +43,10 @@ Status: **design only** (Phase 5).
 
 ## Open policy decisions (needed before Phase 5 is finalized)
 
-| ID | Question |
-|---|---|
-| Q5 | "Secure Payment & Money Hold" in the mockup: the platform receives funds and releases the mentor share after approval. No escrow provider is verified — is holding customer funds acceptable for your business registration in Bangladesh? (legal check) |
-| Q6 | Refund rules: before assignment = full; after delivery = ? ; partial refunds? |
-| Q7 | Who bears gateway fees (when gateways are added)? VAT/tax on commission? |
-| Q8 | Mentor payout holding period (e.g. 7 days after closure) and minimum payout |
-| Q9 | Paid extra revisions price; coupon funding (platform-only or mentor-shared) |
+| ID  | Question                                                                                                                                                                                                                                                 |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q5  | "Secure Payment & Money Hold" in the mockup: the platform receives funds and releases the mentor share after approval. No escrow provider is verified — is holding customer funds acceptable for your business registration in Bangladesh? (legal check) |
+| Q6  | Refund rules: before assignment = full; after delivery = ? ; partial refunds?                                                                                                                                                                            |
+| Q7  | Who bears gateway fees (when gateways are added)? VAT/tax on commission?                                                                                                                                                                                 |
+| Q8  | Mentor payout holding period (e.g. 7 days after closure) and minimum payout                                                                                                                                                                              |
+| Q9  | Paid extra revisions price; coupon funding (platform-only or mentor-shared)                                                                                                                                                                              |
