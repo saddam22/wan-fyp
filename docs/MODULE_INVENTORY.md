@@ -24,7 +24,8 @@ EduKhata is developed in `saddam22/wan-fyp` (owner decision, 2026-10-28). The WA
 - Endpoints: registration (contact verified first), login + lockout + TOTP 2FA, password reset, profile, avatar, identity documents (always "under review", never auto-verified), platforms, `GET /me/entitlements`, access requests (create/cancel), security/sessions/devices, activity, notifications, admin role-builder (draft/submit only), audit.
 - OIDC: discovery, JWKS, Authorization Code + PKCE (S256), scopes `profile email phone`. Clients configured in `server/src/config.ts` (`AGG_*`, `ADS_*`, `BP_*`) or `OIDC_CLIENTS` JSON. A client with `resource` gets RS256 JWT access tokens.
 - Entitlement model: `entitlements(user_id, platform_id, status active|pending|rejected|suspended, roles[], permissions[])`. Hub records but never computes platform access.
-- **Gaps relevant to EduKhata:** no server-to-server API for a platform to read a user's entitlement or to approve/reject an access request; no admin approval of role submissions; email/SMS providers not implemented (dev outbox only; production refuses to start without them); passkeys/Google/Apple refuse; no back-channel logout; KYC review workflow missing.
+- **Gaps relevant to EduKhata (Phase 0):** no server-to-server API for a platform to read a user's entitlement or to approve/reject an access request; no admin approval of role submissions; SMS provider not implemented; passkeys/Google/Apple refuse; no back-channel logout; KYC review workflow missing.
+- **Phase 2 update:** the hub now has an EduKhata client and a platform API (`/platform-api/v1`) — see IDENTITY_INTEGRATION.md. Correction: the hub already supports real **email** codes via Resend (`RESEND_API_KEY`); only **SMS** is still dev-outbox only.
 
 ### Central Ad Platform
 

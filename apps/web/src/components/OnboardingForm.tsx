@@ -5,12 +5,13 @@ import { useState } from "react";
 import { GraduationCap, UserPlus, Users } from "lucide-react";
 import { fixtures } from "@edukhata/contracts";
 import { Field, Progress } from "@/components/ui";
-import { useDemoToast } from "@/components/ui/client";
+import { useDemoToast, useToast } from "@/components/ui/client";
 import { cn } from "@/lib/cn";
 
 type Kind = "student" | "guardian" | "mentor";
 
-export function OnboardingForm() {
+/** `live`: submit to the EduKhata API (WAN sign-in); otherwise a demo form. */
+export function OnboardingForm({ live = false, name }: { live?: boolean; name?: string }) {
   const [kind, setKind] = useState<Kind>("student");
   const [f, setF] = useState({
     institution: "",
@@ -21,7 +22,9 @@ export function OnboardingForm() {
     country: "BD",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
   const demo = useDemoToast();
+  const toast = useToast();
   const router = useRouter();
   const filled =
     kind === "student"
@@ -52,7 +55,36 @@ export function OnboardingForm() {
         )
           er.childCode = "Link codes are 6–10 letters/numbers";
         setErrors(er);
-        if (Object.keys(er).length === 0) demo("Profile completed");
+        if (Object.keys(er).length) return;
+        if (!live) return demo("Profile completed");
+        setBusy(true);
+        void fetch("/api/me/onboarding", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(
+            kind === "student"
+              ? {
+                  kind,
+                  institution: f.institution,
+                  classLevel: f.classLevel,
+                  board: f.board,
+                  subjects: f.subjects,
+                  country: f.country,
+                }
+              : { kind, country: f.country },
+          ),
+        })
+          .then(async (res) => {
+            const body = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(body?.error?.message ?? `Error ${res.status}`);
+            toast({ tone: "success", title: "Welcome to EduKhata!" });
+            router.replace(body.home);
+            router.refresh();
+          })
+          .catch((err: Error) =>
+            toast({ tone: "danger", title: "Could not save your profile", body: err.message }),
+          )
+          .finally(() => setBusy(false));
       }}
     >
       <div>
@@ -205,7 +237,13 @@ export function OnboardingForm() {
           </fieldset>
         </>
       )}
-      {kind === "guardian" && (
+      {kind === "guardian" && live && (
+        <p className="rounded-lg bg-teal-50 p-3 text-sm text-teal-900">
+          After setup, link your child from <b>My Children</b> with the one-time code they create in
+          their profile.
+        </p>
+      )}
+      {kind === "guardian" && !live && (
         <Field
           label="Child's link code (optional now)"
           htmlFor="o-code"
@@ -227,7 +265,11 @@ export function OnboardingForm() {
           after review.
         </p>
       )}
-      <button className="inline-flex h-11 items-center rounded-[10px] bg-brand-600 px-6 text-sm font-semibold text-white hover:bg-brand">
+      {name && <p className="text-xs text-muted">Signed in as {name}.</p>}
+      <button
+        disabled={busy}
+        className="inline-flex h-11 items-center rounded-[10px] bg-brand-600 px-6 text-sm font-semibold text-white hover:bg-brand disabled:opacity-50"
+      >
         {kind === "mentor" ? "Continue to application" : "Finish setup"}
       </button>
     </form>

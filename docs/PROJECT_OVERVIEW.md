@@ -5,7 +5,8 @@ Part of the WANBAHJAHKAS ecosystem. Students (and guardians) order assignments, 
 ## Current state (2026-10-28)
 
 - **Phase 0 complete:** all 8 accessible repositories audited by reading source; mockups reviewed; 309 features tracked.
-- **Phase 1 frontend complete — waiting for owner review (STOP gate).** 111 pages, demo data only, no backend, nothing deployed. See `FRONTEND_AUDIT.md` → Phase 1 and `TESTING_REPORT.md`.
+- **Phase 1 frontend:** approved by the owner.
+- **Phase 2 identity & access: complete.** Real WAN Identity sign-in (OIDC + PKCE) through the new `apps/api`, server-side sessions, onboarding gate, EduKhata-owned roles, admin role/suspension management, hub access requests and entitlement re-checks. Hub changes are in `wan-identity-hub` (branch `ccr-5992ee5d-65mqhc`). Marketplace data (orders, payments…) is still demo data. Nothing is deployed.
 
 ## How to resume in a new session
 
@@ -34,19 +35,20 @@ Part of the WANBAHJAHKAS ecosystem. Students (and guardians) order assignments, 
 
 ## Decisions
 
-| ID    | Question                                                                     | Decision / recommendation                                                                | Blocks                        |
-| ----- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------- |
-| Q1    | Where does EduKhata's code live?                                             | **Decided:** `saddam22/wan-fyp`                                                          | —                             |
-| Q2    | WAN FYP mockup in scope?                                                     | **Decided:** separate project, later                                                     | —                             |
-| Q3    | Live Classes / Exams / Blog / Forum                                          | **Decided:** Blog + FAQ in EduKhata; Live Classes/Exams link to ICTSpark                 | —                             |
-| Q4    | Students/guardians self-serve; mentor & staff roles only granted in EduKhata | **Decided:** yes                                                                         | —                             |
-| Q5    | Holding customer funds until approval ("Money Hold") — legally OK?           | Open — get legal confirmation                                                            | Phase 5                       |
-| Q6–Q9 | Refund rules, fees/VAT, payout holding/minimum, paid revision price, coupons | Open — UI shows placeholders                                                             | Phase 5                       |
-| Q10   | Email and SMS providers                                                      | Open — e.g. SES/Mailgun + a BD SMS gateway                                               | Hub production, notifications |
-| Q11   | Call recording                                                               | **Decided:** removed from UI until a solution, consent and retention policy are approved | —                             |
-| Q12   | HD originals of all mockups                                                  | Open — still wanted to refine dashboards                                                 | Phase 1 polish                |
-| Q13   | Cart icon                                                                    | **Decided:** replaced with My Orders                                                     | —                             |
-| Q14   | Phase 1 frontend approval                                                    | **Waiting for owner review** (see FRONTEND_AUDIT → Phase 1)                              | Phase 2                       |
+| ID    | Question                                                                           | Decision / recommendation                                                                | Blocks                        |
+| ----- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------- |
+| Q1    | Where does EduKhata's code live?                                                   | **Decided:** `saddam22/wan-fyp`                                                          | —                             |
+| Q2    | WAN FYP mockup in scope?                                                           | **Decided:** separate project, later                                                     | —                             |
+| Q3    | Live Classes / Exams / Blog / Forum                                                | **Decided:** Blog + FAQ in EduKhata; Live Classes/Exams link to ICTSpark                 | —                             |
+| Q4    | Students/guardians self-serve; mentor & staff roles only granted in EduKhata       | **Decided:** yes                                                                         | —                             |
+| Q5    | Holding customer funds until approval ("Money Hold") — legally OK?                 | Open — get legal confirmation                                                            | Phase 5                       |
+| Q6–Q9 | Refund rules, fees/VAT, payout holding/minimum, paid revision price, coupons       | Open — UI shows placeholders                                                             | Phase 5                       |
+| Q10   | Email and SMS providers                                                            | Open — e.g. SES/Mailgun + a BD SMS gateway                                               | Hub production, notifications |
+| Q11   | Call recording                                                                     | **Decided:** removed from UI until a solution, consent and retention policy are approved | —                             |
+| Q12   | HD originals of all mockups                                                        | Open — still wanted to refine dashboards                                                 | Phase 1 polish                |
+| Q13   | Cart icon                                                                          | **Decided:** replaced with My Orders                                                     | —                             |
+| Q14   | Phase 1 frontend approval                                                          | **Approved**                                                                             | —                             |
+| Q15   | Merge the Identity Hub changes (`wan-identity-hub`, branch `ccr-5992ee5d-65mqhc`)? | Recommended — EduKhata sign-in needs them                                                | Deploying WAN sign-in         |
 
 ## Policy note
 

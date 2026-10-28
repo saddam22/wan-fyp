@@ -1,7 +1,7 @@
 {
   "name": "edukhata",
   "private": true,
-  "description": "EduKhata — Assignment & Practical Khata Marketplace (WANBAHJAHKAS ecosystem)",
+  "description": "EduKhata \u2014 Assignment & Practical Khata Marketplace (WANBAHJAHKAS ecosystem)",
   "packageManager": "pnpm@10.28.0",
   "engines": {
     "node": ">=22.12.0"
@@ -16,7 +16,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "traceability": "python3 scripts/gen_traceability.py"
+    "traceability": "python3 scripts/gen_traceability.py",
+    "dev:api": "pnpm --filter @edukhata/api dev",
+    "e2e:wan": "pnpm --filter @edukhata/web e2e:wan"
   },
   "devDependencies": {
     "prettier": "3.9.10",

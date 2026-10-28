@@ -6,6 +6,7 @@ import { fixtures } from "@edukhata/contracts";
 import { Avatar, Button, Card, CardHeader, Field, Progress } from "@/components/ui";
 import { CopyButton, useDemoToast } from "@/components/ui/client";
 import { cn } from "@/lib/cn";
+import { WAN_HUB_URL } from "@/lib/site";
 
 export function StudentProfile() {
   const me = fixtures.me;
@@ -153,9 +154,14 @@ export function StudentProfile() {
             Password, two-factor authentication, sessions and login history are managed in WAN
             Identity Hub.
           </p>
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted">
-            Open WAN ID security <ExternalLink size={12} /> (Phase 2)
-          </span>
+          <a
+            href={`${WAN_HUB_URL}/#/security`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-accent)] hover:underline"
+          >
+            Open WAN ID security <ExternalLink size={12} />
+          </a>
         </Card>
       </div>
     </div>

@@ -111,6 +111,7 @@ export const NAV: Record<Area, NavGroup[]> = {
         { label: "Users", href: "/admin/users", icon: "Users" },
         { label: "Mentor Applications", href: "/admin/mentors", icon: "UserCheck", badge: 3 },
         { label: "Verification Queue", href: "/admin/verification", icon: "ShieldCheck" },
+        { label: "Access Requests", href: "/admin/access-requests", icon: "Inbox" },
         { label: "Students", href: "/admin/students", icon: "GraduationCap" },
         { label: "Staff", href: "/admin/staff", icon: "Briefcase", superOnly: true },
         { label: "Roles & Permissions", href: "/admin/roles", icon: "KeyRound", superOnly: true },

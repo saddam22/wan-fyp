@@ -16,4 +16,23 @@ Found by reading source; not exploited or run. None of these repos were modified
 
 Owner action: S1–S3 also affect ICTSpark.online today. I have **not** changed ICTSpark; say if you want a separate fix PR there.
 
+## Phase 2 — identity & access controls (implemented and tested)
+
+| Control                    | Implementation                                                                                                                       | Test                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| No tokens in the browser   | OIDC runs server-side; browser holds only `ek_sid` (httpOnly, SameSite=Lax, Secure in prod)                                          | api.test                                      |
+| Session token at rest      | Only SHA-256 stored; 12 h idle, 7 day absolute expiry; revocation on logout, suspension                                              | api.test                                      |
+| OIDC checks                | PKCE S256, state (single use, 10 min), nonce, issuer `iss`, RS256 ID token, `client_secret_basic`                                    | api.test (replay, unknown state, wrong nonce) |
+| Open redirect              | `next` accepted only as a same-site path                                                                                             | api.test                                      |
+| CSRF                       | Unsafe methods require `Origin` = web origin                                                                                         | api.test, e2e-wan                             |
+| Role escalation            | Roles never from sign-in; admins can't touch staff roles; last super admin protected; advisory lock + actor roles re-read under lock | api.test (incl. concurrent demotion)          |
+| Platform suspension        | Hub refuses sign-in; sessions re-check entitlement and end                                                                           | hub tests, api.test, e2e-wan                  |
+| Hub platform API isolation | A client sees only its own platform; Basic auth with constant-time compare; outside cookie/CSRF API                                  | hub platform-api.test                         |
+| Rate limits                | API global + auth routes; hub platform API 300/min                                                                                   | —                                             |
+| Proxy trust                | API trusts X-Forwarded-For only from `TRUST_PROXY` (default loopback); API must not be public                                        | config                                        |
+
+Findings during Phase 2: **S8** (hub) — a suspended user could never request access again (fixed, tested). **S9** (EduKhata) — an admin demoted mid-request could act on stale roles (fixed by re-reading roles under the lock, tested).
+
+Known gaps: hub entitlement check fails open while the hub is unreachable (documented choice); no RP/back-channel logout yet; marketplace routes beyond identity/admin don't exist yet (Phase 4+).
+
 ## Planned controls (Module 17) — tracked in FEATURE_TRACEABILITY_MATRIX.md M17-*

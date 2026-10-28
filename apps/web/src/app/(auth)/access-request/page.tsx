@@ -1,30 +1,59 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Clock, ExternalLink, ShieldQuestion } from "lucide-react";
+import { ExternalLink, ShieldX } from "lucide-react";
 import { buttonClass, Card } from "@/components/ui";
+import { WAN_HUB_URL } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Request access", robots: { index: false } };
+export const metadata: Metadata = { title: "Access needed", robots: { index: false } };
 
-export default function AccessRequestPage() {
+const TEXT: Record<string, { title: string; body: string }> = {
+  denied: {
+    title: "Your EduKhata access is not active",
+    body: "WAN Identity Hub reports that your access to EduKhata is suspended or was declined. You can request access again in WAN Identity Hub; an EduKhata admin reviews it.",
+  },
+  suspended: {
+    title: "Your EduKhata account is suspended",
+    body: "An EduKhata admin suspended this account. Contact support if you think this is a mistake.",
+  },
+  failed: {
+    title: "WAN sign-in did not finish",
+    body: "The sign-in was cancelled or failed at WAN Identity Hub. Please try again.",
+  },
+};
+
+export default async function AccessRequestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>;
+}) {
+  const { reason = "denied" } = await searchParams;
+  const t = TEXT[reason] ?? TEXT.denied!;
   return (
     <Card className="w-full max-w-lg p-8 text-center">
-      <ShieldQuestion size={44} className="mx-auto text-brand-600" />
-      <h1 className="mt-3 text-xl font-extrabold">EduKhata access needed</h1>
-      <p className="mt-2 text-sm text-muted">
-        You are signed in with your WAN ID, but your account doesn&apos;t have access to EduKhata
-        yet. Students and guardians get access instantly; if your access is pending, it appears in
-        WAN Identity Hub under <b>Access requests</b>.
-      </p>
-      <div className="mt-5 flex items-center justify-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-        <Clock size={16} /> Status: <b>pending review</b> (demo)
-      </div>
+      <ShieldX size={44} className="mx-auto text-danger" />
+      <h1 className="mt-3 text-xl font-extrabold">{t.title}</h1>
+      <p className="mt-2 text-sm text-muted">{t.body}</p>
       <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-        <span
-          className={buttonClass("primary", "md", "opacity-60")}
-          title="Links to the hub in Phase 2"
-        >
-          Open WAN Identity Hub <ExternalLink size={14} />
-        </span>
+        {reason === "denied" && (
+          <a
+            href={`${WAN_HUB_URL}/#/access-requests`}
+            className={buttonClass("primary", "md")}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Request access in WAN ID <ExternalLink size={14} />
+          </a>
+        )}
+        {reason === "failed" && (
+          <Link href="/login" className={buttonClass("primary", "md")}>
+            Try again
+          </Link>
+        )}
+        {reason === "suspended" && (
+          <Link href="/contact" className={buttonClass("primary", "md")}>
+            Contact support
+          </Link>
+        )}
         <Link href="/" className={buttonClass("outline", "md")}>
           Back to EduKhata
         </Link>

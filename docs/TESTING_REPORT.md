@@ -1,5 +1,22 @@
 # Testing Report
 
+## Phase 2 — identity & access (2026-10-28)
+
+| Suite                                                                                                   | Where                               | Result                                      |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
+| EduKhata API integration (Vitest, real PostgreSQL, stand-in hub with real RS256 ID tokens)              | `apps/api/test`                     | **17 / 17** (stable over repeated runs)     |
+| Real end-to-end sign-in (Playwright): **real WAN Identity Hub** + EduKhata API + web in `AUTH_MODE=wan` | `apps/web/e2e-wan` (`pnpm e2e:wan`) | **2 / 2**, 5 consecutive green runs         |
+| Demo-mode UI suite (unchanged pages + new access-requests page)                                         | `apps/web/e2e`                      | **383 pass**, 2 skipped                     |
+| Unit (contracts + i18n)                                                                                 | `pnpm test`                         | 16 / 16                                     |
+| Lint, typecheck, format, build                                                                          | `pnpm check`                        | Pass                                        |
+| WAN Identity Hub after its changes                                                                      | hub repo                            | server **39/39**, unit 19/19, browser 10/10 |
+
+The real end-to-end journey: register a WAN ID on the hub → "Continue with WAN ID" → onboarding gate → student dashboard → no access to admin/mentor → second person signs in, `grant-role` CLI makes them super admin → super admin grants the student the mentor role in `/admin/users` → student opens the mentor dashboard → audit log shows it → the hub suspends the student's EduKhata access via the platform API → the student's next page ends the session (`/access-request?reason=denied`) and WAN sign-in is refused → the student asks again in the hub → the admin approves in `/admin/access-requests` → the student signs in again → sign out. Plus: cross-site write refused, unauthenticated admin call refused.
+
+API integration tests also cover: PKCE/state/nonce/redirect URI, replayed and unknown state, wrong nonce, hub `access_denied`, open-redirect attempts, cookie flags, token stored hashed, Origin check, onboarding validation (no mentor/admin self-grant), admin vs super-admin role rules, last-super-admin protection incl. concurrent demotion, suspension ending sessions and blocking re-sign-in, hub suspension ending sessions, hub outage tolerance, access-request decisions (and 409 on repeat), idle session expiry.
+
+Bugs found and fixed: hub refused repeated access requests from suspended users; stale actor roles under concurrency; e2e test-data clash on repeated runs.
+
 ## Phase 1 — frontend (2026-10-28)
 
 All run locally in the cloud session against a production build (`next build` + `next start`).

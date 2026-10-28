@@ -5,12 +5,14 @@ import { Forbidden } from "./Forbidden";
 import { DashboardShell } from "./Shell";
 
 /**
- * Renders a dashboard area for the demo session. Phase 2 swaps the demo cookie for the
- * real session; the API will enforce the same role rules on every request.
+ * Renders a dashboard area for the signed-in person. The web app only decides what to
+ * show; the API enforces the same role rules on every request.
  */
 export async function AreaLayout({ area, children }: { area: Area; children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect(`/login?next=/${area}`);
+  // Profile gate: nobody uses a dashboard before finishing onboarding.
+  if (!session.onboardingComplete) redirect("/onboarding");
   if (!canAccess(session.roles, `/${area}`)) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center px-4">

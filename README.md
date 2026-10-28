@@ -2,7 +2,7 @@
 
 WANBAHJAHKAS ecosystem marketplace for assignments, handwritten practical khata, drawings and diagrams.
 
-**Status:** Phase 1 (frontend) complete and **waiting for owner review**. Everything runs on demo data — there is no backend yet. Start with [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
+**Status:** Phase 2 (identity & access) complete: real WAN Identity sign-in, sessions, roles and admin user management. Marketplace data (orders, payments, chat…) is still demo data. Start with [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
 
 ## Run it
 
@@ -22,17 +22,41 @@ Open `/login` → **Demo sign-in** and choose a role to see its dashboard. Devel
 | `NEXT_PUBLIC_ICTSPARK_URL` | `https://ictspark.online` | Where Live Classes / Exams link                       |
 | `NEXT_PUBLIC_DEMO_MODE`    | `true`                    | Shows the demo banner and demo sign-in                |
 
+## Run with real WAN sign-in (`AUTH_MODE=wan`)
+
+Needs PostgreSQL 14+ and a checkout of [`wan-identity-hub`](https://github.com/saddam22/wan-identity-hub) (branch with the EduKhata client) next to this repo.
+
+```bash
+createdb wan_identity && createdb edukhata
+# 1. WAN Identity Hub on :4100 (in wan-identity-hub/server)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/wan_identity npm run migrate && npm start
+# 2. EduKhata API on :4200 (migrates on start)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/edukhata pnpm dev:api
+# 3. Web on :3200
+pnpm build && AUTH_MODE=wan pnpm --filter @edukhata/web start
+```
+
+Open `/login` → **Continue with WAN ID** (register on the hub; one-time codes show in the hub's dev outbox). After the first sign-in, make yourself super admin on the server:
+
+```bash
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/edukhata pnpm --filter @edukhata/api grant-role you@example.com super_admin
+```
+
+Development secrets default to matching values in the hub and the API; production requires `EDK_CLIENT_SECRET` on both. See `apps/api/.env.example` and `.env.example`.
+
 ## Checks
 
 ```bash
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
-pnpm e2e        # Playwright; set CHROMIUM_PATH if Chromium is not installed for Playwright
+pnpm e2e        # Playwright UI suite (demo mode); set CHROMIUM_PATH if needed
+pnpm e2e:wan    # real sign-in: starts the hub (../wan-identity-hub), API and web; needs DBs wan_identity_e2e, edukhata_e2e
 ```
 
 ## Layout
 
 ```
-apps/web            Next.js app — src/app (routes), src/components, src/lib (i18n, nav, demo session)
+apps/web            Next.js app — src/app (routes), src/components, src/lib (i18n, nav, session)
+apps/api            Fastify 5 + PostgreSQL — WAN sign-in, sessions, roles, admin user management
 packages/contracts  Shared types, money/date helpers, access rules, demo fixtures, mock adapter
 docs/               Project tracking (overview, inventory, architecture, audits, roadmap, traceability)
 scripts/            gen_traceability.py → docs/FEATURE_TRACEABILITY_MATRIX.md

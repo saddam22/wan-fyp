@@ -17,7 +17,9 @@ Proposed for EduKhata:
 | Auth     | WAN Identity Hub (OIDC) via server-side BFF session            | Spec: no second identity system                                                               |
 | i18n     | bn-BD default + en, extensible (Hub's i18n shape)              | Module 15                                                                                     |
 
-ICTSpark features are **ported** (rules + UX), not linked as code, unless you choose otherwise (Q3).
+ICTSpark features are **ported** (rules + UX), not linked as code.
+
+**Implemented so far:** `apps/web`, `packages/contracts`, `apps/api` (identity & access, Phase 2). The API currently uses plain `pg` queries and SQL migrations; a queue (`pg-boss`) and object storage arrive with the phases that need them.
 
 ## Component diagram
 
