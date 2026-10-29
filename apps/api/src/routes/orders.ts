@@ -11,6 +11,7 @@ import { ApiError } from "../lib/errors.ts";
 import { requireUser, type SessionCtx } from "../lib/session.ts";
 import {
   addEvent,
+  mentorShare,
   OPEN_STATUSES,
   orderDto,
   orderFor,
@@ -238,8 +239,17 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
       pages: o.pages,
       status: o.status,
       studentName: o.student_name,
-      mentorName: o.mentor_name,
+      ...(o.mentor_name ? { mentorName: o.mentor_name } : {}),
       price: { amountMinor: Number(o.price_minor), currency: o.currency },
+      commissionRate: Number(o.commission_rate),
+      ...(as === "mentor" || as === "staff"
+        ? {
+            payout: {
+              amountMinor: mentorShare(Number(o.price_minor), Number(o.commission_rate)),
+              currency: o.currency,
+            },
+          }
+        : {}),
       deadline: o.deadline.toISOString(),
       createdAt: o.created_at.toISOString(),
       needsManualAssignment: as === "staff" ? o.needs_manual_assignment : undefined,

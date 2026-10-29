@@ -108,10 +108,10 @@ export function OrdersTable({
         <span className="font-semibold">
           {formatMoney(
             view === "mentor"
-              ? {
+              ? (o.payout ?? {
                   ...o.price,
                   amountMinor: Math.round(o.price.amountMinor * (1 - o.commissionRate)),
-                }
+                })
               : o.price,
             lang,
           )}

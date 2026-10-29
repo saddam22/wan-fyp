@@ -28,6 +28,22 @@ import { useToast } from "@/components/ui/client";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/client";
 import { LEVEL, WORK_TYPE } from "@/lib/labels";
+import { orderApi, uploadOrderFile } from "@/lib/order-api";
+
+/** What the live wizard needs from the API (GET /catalog, GET /mentors). */
+export interface WizardCatalog {
+  subjects: { id: string; name: string; nameBn: string; levels: Level[] }[];
+  categories: { slug: string; name: string; nameBn: string; description: string }[];
+  priceList: Record<WorkType, { amountMinor: number; currency: string }>;
+  rules: { freeRevisions: number; courierFeeMinor: number; minDeadlineHours: number };
+  mentors: {
+    id: string;
+    name: string;
+    subjects: string[];
+    available: boolean;
+    rating: number | null;
+  }[];
+}
 
 /** Indicative per-page prices (BDT). The real price list comes from admin settings in Phase 4. */
 const PER_PAGE: Record<WorkType, number> = {
@@ -67,8 +83,8 @@ interface Draft {
 
 const STEPS = ["Type & subject", "Requirements", "Deadline & delivery", "Review & pay"];
 
-function minDeadline() {
-  const d = new Date(Date.now() + 24 * 3600_000);
+function minDeadline(hours = 24) {
+  const d = new Date(Date.now() + hours * 3600_000);
   d.setMinutes(0, 0, 0);
   return d;
 }
@@ -77,12 +93,18 @@ function toLocalInput(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function OrderWizard() {
+/** `live`: real catalog, prices, mentors and order creation through the API. */
+export function OrderWizard({ live }: { live?: WizardCatalog } = {}) {
   const params = useSearchParams();
   const router = useRouter();
   const toast = useToast();
   const { t, lang } = useT();
-  const chosen = params.get("mentor") ? mockApi.mentor(params.get("mentor")!) : undefined;
+  const chosen = !live && params.get("mentor") ? mockApi.mentor(params.get("mentor")!) : undefined;
+  const liveChosen = live?.mentors.find((m) => m.id === params.get("mentor"));
+  const categories = live?.categories ?? fixtures.categories;
+  const subjects = live?.subjects ?? fixtures.subjects;
+  const [fileObjs, setFileObjs] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileRef = useRef<HTMLInputElement>(null);
@@ -90,7 +112,7 @@ export function OrderWizard() {
     category: params.get("category") ?? "",
     workType: "practical_khata",
     level: "hsc",
-    subject: chosen?.primarySubject ?? params.get("subject") ?? "",
+    subject: chosen?.primarySubject ?? liveChosen?.subjects[0] ?? params.get("subject") ?? "",
     title: "",
     instructions: "",
     pages: 10,
@@ -98,19 +120,22 @@ export function OrderWizard() {
     deadline: "",
     delivery: "digital",
     address: "",
-    mentor: chosen?.handle ?? "auto",
+    mentor: chosen?.handle ?? liveChosen?.id ?? "auto",
     coupon: "",
     agree: false,
   });
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
   const price = useMemo(() => {
-    const base = PER_PAGE[d.workType] * d.pages;
-    const courier = d.delivery === "courier" ? 120 : 0;
-    const discount = d.coupon.trim().toUpperCase() === "WELCOME20" ? Math.round(base * 0.2) : 0;
+    // Live: the API's price list (the server computes the final price the same way).
+    const perPage = live ? live.priceList[d.workType].amountMinor / 100 : PER_PAGE[d.workType];
+    const base = perPage * d.pages;
+    const courier = d.delivery === "courier" ? (live ? live.rules.courierFeeMinor / 100 : 120) : 0;
+    const discount =
+      !live && d.coupon.trim().toUpperCase() === "WELCOME20" ? Math.round(base * 0.2) : 0;
     const total = base + courier - discount;
     return { base, courier, discount, total, split: splitCommission(Math.round(total * 100), 0.2) };
-  }, [d.workType, d.pages, d.delivery, d.coupon]);
+  }, [d.workType, d.pages, d.delivery, d.coupon, live]);
 
   function validate(s: number): boolean {
     const e: Record<string, string> = {};
@@ -126,8 +151,8 @@ export function OrderWizard() {
     }
     if (s === 2) {
       if (!d.deadline) e.deadline = "Choose a deadline";
-      else if (new Date(d.deadline) < minDeadline())
-        e.deadline = "Deadline must be at least 24 hours from now";
+      else if (new Date(d.deadline) < minDeadline(live?.rules.minDeadlineHours))
+        e.deadline = `Deadline must be at least ${live?.rules.minDeadlineHours ?? 24} hours from now`;
       if (d.delivery === "courier" && d.address.trim().length < 10)
         e.address = "Enter the full delivery address";
     }
@@ -157,11 +182,24 @@ export function OrderWizard() {
         break;
       }
       next.push({ name: f.name, sizeKb: Math.round(f.size / 1024) });
+      setFileObjs((xs) => [...xs, f]);
     }
     set("files", next);
   }
 
-  const mentors = mockApi.mentors({ subject: d.subject || undefined });
+  const mentors = live
+    ? live.mentors
+        .filter((m) => !d.subject || m.subjects.includes(d.subject))
+        .map((m) => ({
+          id: m.id,
+          handle: m.id,
+          name: m.name,
+          hue: m.name.length * 23,
+          verified: false,
+          rating: m.rating ?? "new",
+          available: m.available,
+        }))
+    : mockApi.mentors({ subject: d.subject || undefined });
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -200,10 +238,35 @@ export function OrderWizard() {
         <form
           noValidate
           className="space-y-5 p-5"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             if (!validate(step)) return;
             if (step < 3) return setStep(step + 1);
+            if (live) {
+              setSubmitting(true);
+              try {
+                const o = await orderApi<{ id: string; code: string }>("/orders", "POST", {
+                  categorySlug: d.category,
+                  subjectId: d.subject,
+                  level: d.level,
+                  workType: d.workType,
+                  pages: d.pages,
+                  title: d.title,
+                  instructions: d.instructions,
+                  deadline: new Date(d.deadline).toISOString(),
+                  deliveryMethod: d.delivery,
+                  ...(d.delivery === "courier" ? { deliveryAddress: d.address } : {}),
+                  ...(d.mentor !== "auto" ? { preferredMentorId: d.mentor } : {}),
+                });
+                for (const f of fileObjs) await uploadOrderFile(o.id, "requirement", f);
+                toast({ tone: "success", title: `Order ${o.code} placed`, body: "Next: payment." });
+                router.push(`/student/orders/${o.id}`);
+              } catch (err) {
+                toast({ tone: "danger", title: "Order not placed", body: (err as Error).message });
+                setSubmitting(false);
+              }
+              return;
+            }
             toast({
               tone: "success",
               title: "Order EK-24540 created (demo)",
@@ -219,7 +282,7 @@ export function OrderWizard() {
                   Category <span className="text-danger">*</span>
                 </legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {fixtures.categories.map((c) => (
+                  {categories.map((c) => (
                     <label
                       key={c.slug}
                       className={cn(
@@ -284,8 +347,8 @@ export function OrderWizard() {
                     onChange={(e) => set("subject", e.target.value)}
                   >
                     <option value="">Choose…</option>
-                    {fixtures.subjects
-                      .filter((s) => s.levels.includes(d.level))
+                    {subjects
+                      .filter((s) => s.levels.length === 0 || s.levels.includes(d.level))
                       .map((s) => (
                         <option key={s.id} value={s.id}>
                           {lang === "bn" ? s.nameBn : s.name}
@@ -388,12 +451,13 @@ export function OrderWizard() {
                         <button
                           type="button"
                           aria-label={`Remove ${f.name}`}
-                          onClick={() =>
+                          onClick={() => (
                             set(
                               "files",
                               d.files.filter((_, j) => j !== i),
-                            )
-                          }
+                            ),
+                            setFileObjs((xs) => xs.filter((_, j) => j !== i))
+                          )}
                           className="text-muted hover:text-danger"
                         >
                           <Trash2 size={15} />
@@ -545,25 +609,29 @@ export function OrderWizard() {
               <div className="rounded-xl bg-slate-50 p-4 text-sm">
                 <p className="font-semibold">{d.title}</p>
                 <p className="mt-1 text-xs text-muted">
-                  {fixtures.categories.find((c) => c.slug === d.category)?.name} ·{" "}
-                  {WORK_TYPE[d.workType]} · {LEVEL[d.level]} ·{" "}
-                  {fixtures.subjects.find((s) => s.id === d.subject)?.name} · {d.pages} pages ·{" "}
-                  {d.files.length} file(s)
+                  {categories.find((c) => c.slug === d.category)?.name} · {WORK_TYPE[d.workType]} ·{" "}
+                  {LEVEL[d.level]} · {subjects.find((s) => s.id === d.subject)?.name} · {d.pages}{" "}
+                  pages · {d.files.length} file(s)
                 </p>
                 <p className="mt-1 text-xs text-muted">
                   Deadline {d.deadline && new Date(d.deadline).toLocaleString()} ·{" "}
                   {d.delivery === "courier" ? "Courier" : "Digital"} ·{" "}
-                  {d.mentor === "auto" ? "Auto-match" : mockApi.mentor(d.mentor)?.name}
+                  {d.mentor === "auto"
+                    ? "Auto-match"
+                    : (mentors.find((m) => m.handle === d.mentor)?.name ??
+                      mockApi.mentor(d.mentor)?.name)}
                 </p>
               </div>
-              <Field label="Coupon code" htmlFor="cp" hint="Try WELCOME20 (first order)">
-                <input
-                  id="cp"
-                  className="input font-mono uppercase sm:w-48"
-                  value={d.coupon}
-                  onChange={(e) => set("coupon", e.target.value)}
-                />
-              </Field>
+              {!live && (
+                <Field label="Coupon code" htmlFor="cp" hint="Try WELCOME20 (first order)">
+                  <input
+                    id="cp"
+                    className="input font-mono uppercase sm:w-48"
+                    value={d.coupon}
+                    onChange={(e) => set("coupon", e.target.value)}
+                  />
+                </Field>
+              )}
               <label className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -598,11 +666,14 @@ export function OrderWizard() {
             </Button>
             <button
               type="submit"
-              className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand"
+              disabled={submitting}
+              className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand disabled:opacity-50"
             >
               {step < 3
                 ? t.common.next
-                : `Place order & pay ${formatMoney(bdt(price.total), lang)}`}
+                : live
+                  ? `Place order · ${formatMoney(bdt(price.total), lang)}`
+                  : `Place order & pay ${formatMoney(bdt(price.total), lang)}`}
             </button>
           </div>
         </form>
@@ -638,14 +709,16 @@ export function OrderWizard() {
             </div>
           </dl>
           <ul className="mt-4 space-y-1.5 text-xs text-muted">
-            <li>✓ 2 free revisions included</li>
+            <li>✓ {live?.rules.freeRevisions ?? 2} free revisions included</li>
             <li>✓ Mentor receives 80% only after you approve</li>
             <li>✓ Full refund if no mentor accepts</li>
           </ul>
         </Card>
         <p className="flex gap-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
-          <Info size={16} className="shrink-0" /> Indicative prices. The final price list and coupon
-          rules are configured by admins (Phase 4–5).
+          <Info size={16} className="shrink-0" />{" "}
+          {live
+            ? "Prices come from EduKhata's price list; the server confirms the total when you place the order."
+            : "Indicative prices. The final price list and coupon rules are configured by admins (Phase 4–5)."}
         </p>
       </aside>
     </div>

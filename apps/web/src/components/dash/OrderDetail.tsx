@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { orderApi, uploadOrderFile } from "@/lib/order-api";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -73,7 +75,7 @@ const STAGES: { label: string; reached: OrderStatus[] }[] = [
   { label: "Approved", reached: ["approved", "closed"] },
 ];
 
-function FileRow({ f, locked }: { f: OrderFile; locked: boolean }) {
+function FileRow({ f, locked, href }: { f: OrderFile; locked: boolean; href?: string }) {
   const Icon = f.kind === "image" ? ImageIcon : FileText;
   const toast = useToast();
   return (
@@ -108,6 +110,16 @@ function FileRow({ f, locked }: { f: OrderFile; locked: boolean }) {
         >
           <Lock size={13} /> Locked
         </span>
+      ) : href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener"
+          className="rounded-lg p-2 text-[var(--color-accent)] hover:bg-[var(--color-accent-50)]"
+          aria-label={`${f.stage === "preview" ? "Preview" : "Download"} ${f.name}`}
+        >
+          {f.stage === "preview" ? <Eye size={17} /> : <Download size={17} />}
+        </a>
       ) : (
         <button
           className="rounded-lg p-2 text-[var(--color-accent)] hover:bg-[var(--color-accent-50)]"
@@ -131,13 +143,17 @@ export function OrderDetail({
   order: initial,
   viewer,
   backHref,
+  live = false,
 }: {
   order: Order;
   viewer: Viewer;
   backHref: string;
+  /** Signed in with WAN ID: every action goes to the EduKhata API. */
+  live?: boolean;
 }) {
   const { lang } = useT();
   const toast = useToast();
+  const router = useRouter();
   const [order, setOrder] = useState(initial);
   const [modal, setModal] = useState<
     | null
@@ -149,6 +165,13 @@ export function OrderDetail({
     | "review"
     | "cancel"
     | "escalate"
+    | "close"
+  >(null);
+  const [busy, setBusy] = useState(false);
+  const [previews, setPreviews] = useState<File[]>([]);
+  const [finals, setFinals] = useState<File[]>([]);
+  const [cands, setCands] = useState<
+    { id: string; name: string; activeOrders: number; capacity: number; score: number }[] | null
   >(null);
   const [text, setText] = useState("");
   const [rating, setRating] = useState(5);
@@ -158,7 +181,9 @@ export function OrderDetail({
   const usedFree = order.revisions.filter((r) => !r.paid).length;
   const freeLeft = Math.max(0, order.freeRevisions - usedFree);
   const split = splitCommission(order.price.amountMinor, order.commissionRate);
-  const live = ["assigned", "in_progress", "revision_requested", "matching"].includes(order.status);
+  const running = ["assigned", "in_progress", "revision_requested", "matching"].includes(
+    order.status,
+  );
   const finalLocked =
     viewer === "student" || viewer === "guardian"
       ? !["approved", "closed"].includes(order.status)
@@ -183,7 +208,46 @@ export function OrderDetail({
     setErr("");
   }
 
-  const close = () => (setModal(null), setErr(""), setText(""));
+  const close = () => (setModal(null), setErr(""), setText(""), setPreviews([]), setFinals([]));
+
+  /** Live action: the API does the transition and returns the updated order. */
+  async function act(
+    path: string,
+    body: object | undefined,
+    title: string,
+    after?: (res: unknown) => string | void,
+  ) {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await orderApi<Record<string, unknown>>(path, "POST", body);
+      const next = (res.order ?? res) as Order;
+      if (next && typeof next === "object" && "code" in next) setOrder(next);
+      const extra = after?.(res);
+      toast({ tone: "success", title, ...(extra ? { body: extra } : {}) });
+      close();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const openAssign = async () => {
+    setModal("assign");
+    if (live) {
+      setCands(null);
+      setCands(
+        await orderApi<NonNullable<typeof cands>>(`/admin/orders/${order.id}/candidates`).catch(
+          () => [],
+        ),
+      );
+    }
+  };
+  const mentorShare = order.payout ?? { ...order.price, amountMinor: split.mentorMinor };
+  const platformShare = {
+    ...order.price,
+    amountMinor: order.price.amountMinor - mentorShare.amountMinor,
+  };
   const canStudentAct = viewer === "student" && order.status === "delivered";
 
   const actions = (
@@ -198,7 +262,10 @@ export function OrderDetail({
           </Button>
         </>
       )}
-      {viewer === "student" && order.status === "awaiting_payment" && (
+      {viewer === "student" && order.status === "awaiting_payment" && live && (
+        <span className="text-xs font-semibold text-muted">Payment: next step</span>
+      )}
+      {viewer === "student" && order.status === "awaiting_payment" && !live && (
         <Link
           href="/student/payments/p1/pay"
           className="inline-flex h-10 items-center rounded-[10px] bg-[var(--color-accent)] px-4 text-sm font-semibold text-white"
@@ -211,8 +278,33 @@ export function OrderDetail({
           <Star size={16} /> Rate mentor
         </Button>
       )}
+      {live && viewer === "mentor" && order.status === "assigned" && (
+        <>
+          <Button
+            variant="accent"
+            disabled={busy}
+            onClick={() => act(`/mentor/orders/${order.id}/start`, undefined, "Work started")}
+          >
+            Start work
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() =>
+              act(`/mentor/orders/${order.id}/release`, {}, "Order handed back", () => {
+                router.push("/mentor/orders");
+              })
+            }
+          >
+            Hand back
+          </Button>
+        </>
+      )}
       {viewer === "mentor" &&
-        ["in_progress", "assigned", "revision_requested"].includes(order.status) && (
+        (live
+          ? ["in_progress", "revision_requested"]
+          : ["in_progress", "assigned", "revision_requested"]
+        ).includes(order.status) && (
           <Button variant="accent" onClick={() => setModal("deliver")}>
             <Upload size={16} />{" "}
             {order.status === "revision_requested" ? "Submit revision" : "Deliver work"}
@@ -220,15 +312,24 @@ export function OrderDetail({
         )}
       {viewer === "admin" && !["closed", "cancelled", "refunded"].includes(order.status) && (
         <>
-          <Button variant="accent" onClick={() => setModal("assign")}>
+          <Button variant="accent" onClick={openAssign}>
             <UserCog size={16} /> {order.mentorId ? "Reassign" : "Assign mentor"}
           </Button>
           <Button variant="outline" onClick={() => setModal("cancel")}>
-            Cancel & refund
+            {live ? "Cancel order" : "Cancel & refund"}
           </Button>
         </>
       )}
-      {viewer === "supporter" && (
+      {live && viewer === "admin" && order.status === "approved" && (
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() => act(`/admin/orders/${order.id}/close`, undefined, "Order closed")}
+        >
+          Close order
+        </Button>
+      )}
+      {viewer === "supporter" && !live && (
         <Button variant="accent" onClick={() => setModal("escalate")}>
           <AlertTriangle size={16} /> Escalate to admin
         </Button>
@@ -360,14 +461,19 @@ export function OrderDetail({
                     ) : (
                       <ul className="space-y-2">
                         {files.map((f) => (
-                          <FileRow key={f.id} f={f} locked={stage === "final" && finalLocked} />
+                          <FileRow
+                            key={f.id}
+                            f={f}
+                            locked={stage === "final" && finalLocked}
+                            {...(live ? { href: `/api/orders/${order.id}/files/${f.id}` } : {})}
+                          />
                         ))}
                       </ul>
                     )}
                   </div>
                 );
               })}
-              {order.files.some((f) => f.stage === "preview" && f.kind === "image") && (
+              {!live && order.files.some((f) => f.stage === "preview" && f.kind === "image") && (
                 <div
                   className="watermark ruled h-48 rounded-xl bg-white ring-1 ring-line md:col-span-2"
                   role="img"
@@ -398,7 +504,13 @@ export function OrderDetail({
                           r.resolvedAt ? "text-success" : "text-warning",
                         )}
                       >
-                        {r.resolvedAt ? `Resolved ${formatDate(r.resolvedAt, lang)}` : "Open"}
+                        {r.resolvedAt
+                          ? `Resolved ${formatDate(r.resolvedAt, lang)}`
+                          : r.paymentStatus === "due"
+                            ? `Waiting for payment (${formatMoney({ ...order.price, amountMinor: r.feeMinor ?? 0 }, lang)})`
+                            : r.paymentStatus === "cancelled"
+                              ? "Withdrawn"
+                              : "Open"}
                       </span>
                     </div>
                     <p className="mt-1 text-slate-700">{r.instructions}</p>
@@ -435,7 +547,7 @@ export function OrderDetail({
         </div>
 
         <aside className="space-y-5">
-          {live && (
+          {running && (
             <Card className="p-5">
               <p className="mb-2 text-sm font-bold">Time to deadline</p>
               <Countdown deadline={order.deadline} label="Remaining" />
@@ -470,7 +582,7 @@ export function OrderDetail({
               </p>
             )}
             {order.conversationId && viewer !== "guardian" && (
-              <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className={cn("mt-4 grid gap-2", live ? "grid-cols-1" : "grid-cols-3")}>
                 <Link
                   href={
                     viewer === "admin" || viewer === "supporter"
@@ -479,32 +591,37 @@ export function OrderDetail({
                   }
                   className="flex flex-col items-center gap-1 rounded-lg bg-slate-50 py-2 text-[11px] font-semibold hover:bg-[var(--color-accent-50)]"
                 >
-                  <MessageSquare size={17} /> Chat
+                  <MessageSquare size={17} />{" "}
+                  {live ? "Open order chat (calls from the chat)" : "Chat"}
                 </Link>
-                <button
-                  onClick={() =>
-                    toast({
-                      tone: "info",
-                      title: "Audio call",
-                      body: "1:1 calls use the WAN calling module (Phase 3). Calls are not recorded.",
-                    })
-                  }
-                  className="flex flex-col items-center gap-1 rounded-lg bg-slate-50 py-2 text-[11px] font-semibold hover:bg-[var(--color-accent-50)]"
-                >
-                  <Phone size={17} /> Call
-                </button>
-                <button
-                  onClick={() =>
-                    toast({
-                      tone: "info",
-                      title: "Video call",
-                      body: "1:1 calls use the WAN calling module (Phase 3). Calls are not recorded.",
-                    })
-                  }
-                  className="flex flex-col items-center gap-1 rounded-lg bg-slate-50 py-2 text-[11px] font-semibold hover:bg-[var(--color-accent-50)]"
-                >
-                  <Video size={17} /> Video
-                </button>
+                {!live && (
+                  <button
+                    onClick={() =>
+                      toast({
+                        tone: "info",
+                        title: "Audio call",
+                        body: "1:1 calls use the WAN calling module (Phase 3). Calls are not recorded.",
+                      })
+                    }
+                    className="flex flex-col items-center gap-1 rounded-lg bg-slate-50 py-2 text-[11px] font-semibold hover:bg-[var(--color-accent-50)]"
+                  >
+                    <Phone size={17} /> Call
+                  </button>
+                )}
+                {!live && (
+                  <button
+                    onClick={() =>
+                      toast({
+                        tone: "info",
+                        title: "Video call",
+                        body: "1:1 calls use the WAN calling module (Phase 3). Calls are not recorded.",
+                      })
+                    }
+                    className="flex flex-col items-center gap-1 rounded-lg bg-slate-50 py-2 text-[11px] font-semibold hover:bg-[var(--color-accent-50)]"
+                  >
+                    <Video size={17} /> Video
+                  </button>
+                )}
               </div>
             )}
           </Card>
@@ -522,13 +639,11 @@ export function OrderDetail({
                     <dt className="text-muted">
                       Platform fee ({Math.round(order.commissionRate * 100)}%)
                     </dt>
-                    <dd>
-                      −{formatMoney({ ...order.price, amountMinor: split.platformMinor }, lang)}
-                    </dd>
+                    <dd>−{formatMoney(platformShare, lang)}</dd>
                   </div>
                   <div className="flex justify-between border-t border-line pt-2 font-bold">
                     <dt>Your earnings</dt>
-                    <dd>{formatMoney({ ...order.price, amountMinor: split.mentorMinor }, lang)}</dd>
+                    <dd>{formatMoney(mentorShare, lang)}</dd>
                   </div>
                   <p className="text-[11px] text-muted">Available after the student approves.</p>
                 </>
@@ -542,13 +657,11 @@ export function OrderDetail({
                     <dt className="text-muted">
                       Commission ({Math.round(order.commissionRate * 100)}%)
                     </dt>
-                    <dd>
-                      {formatMoney({ ...order.price, amountMinor: split.platformMinor }, lang)}
-                    </dd>
+                    <dd>{formatMoney(platformShare, lang)}</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-muted">Mentor share</dt>
-                    <dd>{formatMoney({ ...order.price, amountMinor: split.mentorMinor }, lang)}</dd>
+                    <dd>{formatMoney(mentorShare, lang)}</dd>
                   </div>
                 </>
               ) : (
@@ -580,8 +693,23 @@ export function OrderDetail({
             </Card>
           )}
 
-          {viewer === "student" &&
-            ["delivered", "in_progress", "revision_requested"].includes(order.status) && (
+          {order.dispute && (
+            <Card className="p-5 text-sm" data-testid="dispute">
+              <p className="mb-1 flex items-center gap-2 font-bold">
+                <Scale size={16} /> Dispute {order.dispute.status === "open" ? "open" : "resolved"}
+              </p>
+              <p className="text-slate-700">{order.dispute.reason}</p>
+              {order.dispute.resolutionNote && (
+                <p className="mt-2 text-xs text-muted">Decision: {order.dispute.resolutionNote}</p>
+              )}
+            </Card>
+          )}
+
+          {(viewer === "student" || (live && viewer === "mentor")) &&
+            (live
+              ? ["assigned", "delivered", "in_progress", "revision_requested", "approved"]
+              : ["delivered", "in_progress", "revision_requested"]
+            ).includes(order.status) && (
               <button
                 onClick={() => setModal("dispute")}
                 className="flex w-full items-center justify-center gap-2 text-xs font-semibold text-muted hover:text-danger"
@@ -603,12 +731,15 @@ export function OrderDetail({
             </Button>
             <Button
               variant="success"
+              disabled={busy}
               onClick={() =>
-                transition(
-                  "approved",
-                  "Approved by student — mentor earnings released",
-                  "Work approved",
-                )
+                live
+                  ? act(`/orders/${order.id}/approve`, undefined, "Work approved")
+                  : transition(
+                      "approved",
+                      "Approved by student — mentor earnings released",
+                      "Work approved",
+                    )
               }
             >
               Approve & release payment
@@ -618,8 +749,7 @@ export function OrderDetail({
       >
         <p className="text-sm text-slate-700">
           Approving unlocks the final files and releases the mentor&apos;s share (
-          {formatMoney({ ...order.price, amountMinor: split.mentorMinor }, lang)}). You can&apos;t
-          request free revisions afterwards.
+          {formatMoney(mentorShare, lang)}). You can&apos;t request revisions afterwards.
         </p>
       </Modal>
 
@@ -634,9 +764,20 @@ export function OrderDetail({
             </Button>
             <Button
               variant="accent"
+              disabled={busy}
               onClick={() => {
                 if (text.trim().length < 15)
                   return setErr("Explain what needs to change (at least 15 characters)");
+                if (live)
+                  return void act(
+                    `/orders/${order.id}/revisions`,
+                    { instructions: text },
+                    "Revision requested",
+                    (res) =>
+                      (res as { paymentDue?: boolean }).paymentDue
+                        ? "This revision is beyond the free ones: it goes to the mentor after payment."
+                        : undefined,
+                  );
                 setOrder((o) => ({
                   ...o,
                   revisions: [
@@ -694,10 +835,13 @@ export function OrderDetail({
             </Button>
             <Button
               variant="danger"
+              disabled={busy}
               onClick={() =>
                 text.trim().length < 20
                   ? setErr("Describe the problem (at least 20 characters)")
-                  : transition("disputed", "Dispute opened by student", "Dispute opened")
+                  : live
+                    ? act(`/orders/${order.id}/disputes`, { reason: text }, "Dispute opened")
+                    : transition("disputed", "Dispute opened by student", "Dispute opened")
               }
             >
               Open dispute
@@ -732,14 +876,25 @@ export function OrderDetail({
             </Button>
             <Button
               variant="accent"
-              onClick={() => (
-                setModal(null),
-                toast({
-                  tone: "success",
-                  title: "Review submitted",
-                  body: "Reviews are checked by moderators before publishing (demo).",
-                })
-              )}
+              disabled={busy}
+              onClick={() =>
+                live
+                  ? act(
+                      `/orders/${order.id}/review`,
+                      { rating, text },
+                      "Review submitted",
+                      (res) =>
+                        (res as { status?: string }).status === "pending"
+                          ? "It mentions contact details, so a moderator checks it first."
+                          : undefined,
+                    )
+                  : (setModal(null),
+                    toast({
+                      tone: "success",
+                      title: "Review submitted",
+                      body: "Reviews are checked by moderators before publishing (demo).",
+                    }))
+              }
             >
               Submit review
             </Button>
@@ -767,7 +922,11 @@ export function OrderDetail({
           className="input"
           placeholder="How was the work, communication and delivery?"
           aria-label="Review"
+          maxLength={1000}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
         />
+        {err && <p className="mt-2 text-xs text-danger">{err}</p>}
       </Modal>
 
       <Modal
@@ -781,15 +940,31 @@ export function OrderDetail({
             </Button>
             <Button
               variant="accent"
-              onClick={() =>
-                text.trim().length < 5
-                  ? setErr("Add a short note for the student")
-                  : transition(
-                      "delivered",
-                      order.status === "revision_requested" ? "Revised delivery" : "Delivered",
-                      "Delivery submitted",
-                    )
-              }
+              disabled={busy}
+              onClick={async () => {
+                if (text.trim().length < 5) return setErr("Add a short note for the student");
+                if (!live)
+                  return transition(
+                    "delivered",
+                    order.status === "revision_requested" ? "Revised delivery" : "Delivered",
+                    "Delivery submitted",
+                  );
+                if (!previews.length || !finals.length)
+                  return setErr("Add at least one preview image and the final files");
+                setBusy(true);
+                try {
+                  for (const f of previews) await uploadOrderFile(order.id, "preview", f);
+                  for (const f of finals) await uploadOrderFile(order.id, "final", f);
+                } catch (e) {
+                  setBusy(false);
+                  return setErr((e as Error).message);
+                }
+                await act(
+                  `/mentor/orders/${order.id}/deliver`,
+                  { note: text },
+                  "Delivery submitted",
+                );
+              }}
             >
               Submit delivery
             </Button>
@@ -797,11 +972,36 @@ export function OrderDetail({
         }
       >
         <div className="space-y-3">
-          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line bg-slate-50 p-5 text-center text-sm">
-            <Upload size={22} className="text-[var(--color-accent)]" />
-            Upload preview (watermarked automatically) and final files
-            <input type="file" multiple className="sr-only" accept="application/pdf,image/*" />
-          </label>
+          {live ? (
+            <>
+              <Field label="Preview images (watermarked automatically)" required htmlFor="dprev">
+                <input
+                  id="dprev"
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  className="text-sm"
+                  onChange={(e) => setPreviews([...(e.target.files ?? [])])}
+                />
+              </Field>
+              <Field label="Final files (unlock after approval)" required htmlFor="dfinal">
+                <input
+                  id="dfinal"
+                  type="file"
+                  multiple
+                  accept="application/pdf,image/jpeg,image/png,image/webp,.doc,.docx,.zip"
+                  className="text-sm"
+                  onChange={(e) => setFinals([...(e.target.files ?? [])])}
+                />
+              </Field>
+            </>
+          ) : (
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line bg-slate-50 p-5 text-center text-sm">
+              <Upload size={22} className="text-[var(--color-accent)]" />
+              Upload preview (watermarked automatically) and final files
+              <input type="file" multiple className="sr-only" accept="application/pdf,image/*" />
+            </label>
+          )}
           <Field label="Note to student" required htmlFor="dnote" error={err}>
             <textarea
               id="dnote"
@@ -826,7 +1026,16 @@ export function OrderDetail({
             </Button>
             <Button
               variant="accent"
+              disabled={busy}
               onClick={() => {
+                if (live)
+                  return mentorPick
+                    ? void act(
+                        `/admin/orders/${order.id}/assign`,
+                        { mentorId: mentorPick, note: text },
+                        "Mentor assigned",
+                      )
+                    : setErr("Choose a mentor");
                 const m = mockApi.mentor(mentorPick);
                 if (!m) return setErr("Choose a mentor");
                 setOrder((o) => ({ ...o, mentorId: m.id, mentorName: m.name }));
@@ -853,18 +1062,41 @@ export function OrderDetail({
             value={mentorPick}
             onChange={(e) => setMentorPick(e.target.value)}
           >
-            <option value="">Choose…</option>
-            {mockApi.mentors({ subject: order.subject }).map((m) => (
-              <option
-                key={m.id}
-                value={m.handle}
-                disabled={!m.available || m.id === order.mentorId}
-              >
-                {m.name} — {m.activeOrders}/{m.capacity} active{!m.available ? " (full)" : ""}
-              </option>
-            ))}
+            <option value="">{live && !cands ? "Loading…" : "Choose…"}</option>
+            {live &&
+              cands?.map((m) => (
+                <option key={m.id} value={m.id} disabled={m.id === order.mentorId}>
+                  {m.name} — {m.activeOrders}/{m.capacity} active · score {m.score}
+                </option>
+              ))}
+            {!live &&
+              mockApi.mentors({ subject: order.subject }).map((m) => (
+                <option
+                  key={m.id}
+                  value={m.handle}
+                  disabled={!m.available || m.id === order.mentorId}
+                >
+                  {m.name} — {m.activeOrders}/{m.capacity} active{!m.available ? " (full)" : ""}
+                </option>
+              ))}
           </select>
         </Field>
+        {live && cands?.length === 0 && (
+          <p className="mt-2 text-xs text-muted">
+            No mentor with this subject and free capacity right now.
+          </p>
+        )}
+        {live && (
+          <Field label="Note (kept in the order history)" htmlFor="anote">
+            <input
+              id="anote"
+              className="input"
+              maxLength={300}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+          </Field>
+        )}
       </Modal>
 
       <Modal
@@ -878,12 +1110,17 @@ export function OrderDetail({
             </Button>
             <Button
               variant="danger"
+              disabled={busy}
               onClick={() =>
-                transition(
-                  "refunded",
-                  "Cancelled by admin — refund queued for accountant",
-                  "Order cancelled",
-                )
+                live
+                  ? text.trim().length < 3
+                    ? setErr("Give a reason")
+                    : act(`/orders/${order.id}/cancel`, { reason: text }, "Order cancelled")
+                  : transition(
+                      "refunded",
+                      "Cancelled by admin — refund queued for accountant",
+                      "Order cancelled",
+                    )
               }
             >
               Cancel & refund
@@ -892,9 +1129,21 @@ export function OrderDetail({
         }
       >
         <p className="text-sm text-slate-700">
-          A refund of {formatMoney(order.price, lang)} is created for the accounts team to pay out.
-          This is logged in the audit trail.
+          {live
+            ? "The order is cancelled and the mentor (if any) is told. If it was paid, the refund is handled by the accounts team. Logged in the audit trail."
+            : `A refund of ${formatMoney(order.price, lang)} is created for the accounts team to pay out. This is logged in the audit trail.`}
         </p>
+        {live && (
+          <Field label="Reason" required htmlFor="creason" error={err}>
+            <input
+              id="creason"
+              className="input"
+              maxLength={300}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+          </Field>
+        )}
       </Modal>
 
       <Modal

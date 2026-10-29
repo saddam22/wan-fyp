@@ -1,3 +1,5 @@
+import { LiveOrderList } from "@/components/dash/LiveOrders";
+import { authMode } from "@/lib/auth-mode";
 import { Plus } from "lucide-react";
 import { fixtures, mockApi } from "@edukhata/contracts";
 import { OrdersTable } from "@/components/dash/OrdersTable";
@@ -15,13 +17,17 @@ export default function StudentOrders() {
           </ButtonLink>
         }
       />
-      <Card>
-        <OrdersTable
-          orders={mockApi.orders("all", fixtures.me.id)}
-          base="/student/orders"
-          view="student"
-        />
-      </Card>
+      {authMode() === "wan" ? (
+        <LiveOrderList as="student" base="/student/orders" view="student" />
+      ) : (
+        <Card>
+          <OrdersTable
+            orders={mockApi.orders("all", fixtures.me.id)}
+            base="/student/orders"
+            view="student"
+          />
+        </Card>
+      )}
     </>
   );
 }

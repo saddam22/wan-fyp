@@ -342,6 +342,72 @@ test("a student messages and calls EduKhata support in real time; no direct chat
   await expect(up.locator(".agc-timer")).toHaveCount(0);
 });
 
+test("a student places an order with a file at the server's price; a mentor sets up matching", async ({
+  browser,
+}) => {
+  const suffix = STUDENT.split(" ")[1]!;
+  const c = await browser.newContext();
+  const p = await c.newPage();
+  await registerOnHub(p.request, `Rafi ${suffix}`, `rafi.${run}@example.com`);
+  await wanSignIn(p);
+  await p.getByLabel("Institution").fill("Dhaka College");
+  await p.getByLabel("Class / year").selectOption("HSC 2nd year");
+  await p.getByRole("button", { name: "Biology" }).click();
+  await p.getByRole("button", { name: "Finish setup" }).click();
+  await expect(p).toHaveURL(/\/student$/);
+
+  await p.goto("/student/new-order");
+  await p.getByText("Practical Khata (Handwritten)").click();
+  await p.getByLabel("Type of work").selectOption("practical_khata");
+  await p.getByLabel("Level").selectOption("hsc");
+  await p.getByLabel("Subject").selectOption("biology");
+  await p.getByRole("button", { name: "Next" }).click();
+  await p.getByLabel("Title").fill("Biology practical khata, chapter 2");
+  await p
+    .getByLabel("Instructions")
+    .fill("Dhaka board. Chapter 2 experiments, labelled diagrams, neat handwriting.");
+  await p.getByLabel("Pages").fill("8");
+  await p.locator('input[type="file"]').setInputFiles({
+    name: "syllabus.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"),
+  });
+  await p.getByRole("button", { name: "Next" }).click();
+  const d = new Date(Date.now() + 3 * 24 * 3600_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  await p
+    .getByLabel("Deadline")
+    .fill(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T10:00`);
+  await p.getByRole("button", { name: "Next" }).click();
+  await p.getByRole("checkbox").check();
+  // 8 pages × ৳50 from the API's price list.
+  await p.getByRole("button", { name: /Place order · ৳400/ }).click();
+  await expect(p).toHaveURL(/\/student\/orders\/[0-9a-f-]{36}$/);
+  await expect(p.getByText("Biology practical khata, chapter 2").first()).toBeVisible();
+  await expect(p.getByText("syllabus.pdf")).toBeVisible();
+  await expect(p.getByText("Payment: next step")).toBeVisible();
+  await p.goto("/student/orders");
+  await expect(
+    p.getByRole("row").filter({ hasText: "Biology practical khata, chapter 2" }),
+  ).toBeVisible();
+
+  // A mentor turns on matching for their subjects.
+  const mEmail = `mentor.${run}@example.com`;
+  const mc = await browser.newContext();
+  const mp = await mc.newPage();
+  await registerOnHub(mp.request, `Nadia ${suffix}`, mEmail);
+  await wanSignIn(mp);
+  grantRole(mEmail, "mentor");
+  await mp.goto("/mentor/profile");
+  await mp.getByRole("button", { name: "Biology", exact: true }).click();
+  await mp.getByRole("button", { name: "Practical khata" }).click();
+  await mp.getByTestId("mentor-available").check();
+  await mp.getByRole("button", { name: "Save profile" }).click();
+  await expect(mp.getByText("Profile saved")).toBeVisible();
+  await mp.goto("/mentor/offers");
+  await expect(mp.getByText("0 open offers")).toBeVisible();
+});
+
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {
   const evil = await request.post("/api/me/onboarding", {
     headers: { origin: "https://evil.example" },

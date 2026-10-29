@@ -118,6 +118,9 @@ export interface Revision {
   instructions: string;
   paid: boolean;
   resolvedAt?: string;
+  /** Live API: fee of a paid revision and whether it is paid. */
+  feeMinor?: number;
+  paymentStatus?: "not_required" | "due" | "paid" | "cancelled";
 }
 
 export interface Order {
@@ -146,6 +149,19 @@ export interface Order {
   timeline: OrderEvent[];
   deliveryMethod: "digital" | "courier" | "pickup";
   conversationId?: string;
+  /** Live API: the mentor's share (mentor and staff only). */
+  payout?: Money;
+  deliveryAddress?: string;
+  needsManualAssignment?: boolean;
+  dispute?: {
+    id: string;
+    status: string;
+    reason: string;
+    openedAt: string;
+    resolvedAt?: string;
+    resolutionNote?: string | null;
+    refundMinor?: number;
+  } | null;
 }
 
 export interface Offer {

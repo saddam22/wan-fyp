@@ -1,3 +1,7 @@
+import { ApiProblem } from "@/components/dash/ApiProblem";
+import { MentorProfileForm, type LiveMentorProfile } from "@/components/dash/MentorProfileForm";
+import { apiFetch } from "@/lib/api";
+import { authMode } from "@/lib/auth-mode";
 import Link from "next/link";
 import { fixtures } from "@edukhata/contracts";
 import { QrProfileCard } from "@/components/dash/mentor";
@@ -5,7 +9,23 @@ import { Button, Card, CardHeader, Field, PageHeader } from "@/components/ui";
 import { SITE_URL } from "@/lib/site";
 import { subjectName } from "@/lib/labels";
 
-export default function MentorProfilePage() {
+export default async function MentorProfilePage() {
+  if (authMode() === "wan") {
+    const [p, c] = await Promise.all([apiFetch("/mentor/profile"), apiFetch("/catalog")]);
+    if (!p.ok || !c.ok) return <ApiProblem status={p.ok ? c.status : p.status} />;
+    return (
+      <>
+        <PageHeader title="Profile" sub="What matching uses to offer you orders." />
+        <MentorProfileForm
+          profile={(await p.json()) as LiveMentorProfile}
+          subjects={
+            ((await c.json()) as { subjects: { id: string; name: string; nameBn: string }[] })
+              .subjects
+          }
+        />
+      </>
+    );
+  }
   const m = fixtures.meMentor;
   return (
     <>

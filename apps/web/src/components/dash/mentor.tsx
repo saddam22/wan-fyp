@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import {
@@ -47,6 +48,7 @@ import {
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/client";
 import { subjectName, WORK_TYPE } from "@/lib/labels";
+import { orderApi } from "@/lib/order-api";
 
 export function AvailabilityToggle() {
   const [on, setOn] = useState(true);
@@ -86,14 +88,39 @@ export function AvailabilityToggle() {
  * Time-limited order offers. Acceptance is decided by the server (first eligible
  * acceptance wins, atomically); offer `of3` simulates losing that race.
  */
-export function OffersList({ offers: initial, compact }: { offers: Offer[]; compact?: boolean }) {
+export function OffersList({
+  offers: initial,
+  compact,
+  live = false,
+}: {
+  offers: (Offer & { instructions?: string })[];
+  compact?: boolean;
+  /** Accept/decline through the API (first valid acceptance wins on the server). */
+  live?: boolean;
+}) {
+  const router = useRouter();
   const { lang } = useT();
   const toast = useToast();
   const [offers, setOffers] = useState(initial);
   const [reject, setReject] = useState<Offer | null>(null);
   const [reason, setReason] = useState("busy");
 
-  function accept(o: Offer) {
+  async function accept(o: Offer) {
+    if (live) {
+      try {
+        await orderApi(`/mentor/offers/${o.id}/accept`, "POST");
+        toast({
+          tone: "success",
+          title: `${o.orderCode} is yours`,
+          body: "Start when you're ready.",
+        });
+        router.push(`/mentor/orders/${o.orderId}`);
+      } catch (e) {
+        toast({ tone: "warning", title: "Not available any more", body: (e as Error).message });
+      }
+      setOffers((xs) => xs.filter((x) => x.id !== o.id));
+      return;
+    }
     if (o.id === "of3") {
       toast({
         tone: "warning",
@@ -125,12 +152,17 @@ export function OffersList({ offers: initial, compact }: { offers: Offer[]; comp
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold">{o.title}</p>
-                <Badge tone="violet">{o.matchScore}% match</Badge>
+                <Badge tone="violet">
+                  {live ? Math.round(o.matchScore * 100) : o.matchScore}% match
+                </Badge>
               </div>
               <p className="text-xs text-muted">
                 {o.orderCode} · {subjectName(o.subject, lang)} · {WORK_TYPE[o.workType]} · {o.pages}{" "}
                 pages · due {formatDate(o.deadline, lang, true)}
               </p>
+              {o.instructions && (
+                <p className="mt-1 line-clamp-2 text-xs text-slate-600">{o.instructions}</p>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
@@ -166,15 +198,18 @@ export function OffersList({ offers: initial, compact }: { offers: Offer[]; comp
             </Button>
             <Button
               variant="danger"
-              onClick={() => (
-                setOffers((xs) => xs.filter((x) => x.id !== reject!.id)),
-                setReject(null),
+              onClick={async () => {
+                const o = reject!;
+                if (live)
+                  await orderApi(`/mentor/offers/${o.id}/decline`, "POST").catch(() => undefined);
+                setOffers((xs) => xs.filter((x) => x.id !== o.id));
+                setReject(null);
                 toast({
                   tone: "info",
                   title: "Offer declined",
                   body: "It moves to the next matching mentor.",
-                })
-              )}
+                });
+              }}
             >
               Decline
             </Button>
