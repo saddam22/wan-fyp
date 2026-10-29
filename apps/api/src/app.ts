@@ -7,6 +7,7 @@ import type { Deps } from "./deps.ts";
 import { ApiError } from "./lib/errors.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { authRoutes } from "./routes/auth.ts";
+import { guardianRoutes } from "./routes/guardians.ts";
 import { meRoutes } from "./routes/me.ts";
 import { notificationRoutes } from "./routes/notifications.ts";
 import { createNotifications } from "./social/notifications.ts";
@@ -72,6 +73,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(meRoutes, deps);
   await app.register(adminRoutes, deps);
   await app.register(notificationRoutes, deps);
+  await app.register(guardianRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

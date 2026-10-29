@@ -8,7 +8,8 @@ import { CopyButton, useDemoToast } from "@/components/ui/client";
 import { cn } from "@/lib/cn";
 import { WAN_HUB_URL } from "@/lib/site";
 
-export function StudentProfile() {
+/** `guardianLinks` replaces the demo guardian card when signed in with WAN ID. */
+export function StudentProfile({ guardianLinks }: { guardianLinks?: React.ReactNode }) {
   const me = fixtures.me;
   const demo = useDemoToast();
   const [f, setF] = useState({
@@ -117,35 +118,37 @@ export function StudentProfile() {
             {me.profileCompletion}% — add a profile photo in WAN ID to reach 100%.
           </p>
         </Card>
-        <Card className="p-5">
-          <p className="flex items-center gap-2 text-sm font-bold">
-            <KeyRound size={16} /> Link a guardian
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            Create a one-time code and give it to your parent or guardian. You decide what they can
-            see in their dashboard.
-          </p>
-          {code ? (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="rounded-lg bg-slate-50 px-3 py-2 font-mono font-bold tracking-widest">
-                {code}
-              </span>
-              <CopyButton text={code} />
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => setCode(Math.random().toString(36).slice(2, 10).toUpperCase())}
-            >
-              Generate link code
-            </Button>
-          )}
-          <p className="mt-2 text-[11px] text-muted">
-            Linked: Shirin Akter (orders ✓, payments ✓, pay on behalf ✓)
-          </p>
-        </Card>
+        {guardianLinks ?? (
+          <Card className="p-5">
+            <p className="flex items-center gap-2 text-sm font-bold">
+              <KeyRound size={16} /> Link a guardian
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Create a one-time code and give it to your parent or guardian. You decide what they
+              can see in their dashboard.
+            </p>
+            {code ? (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="rounded-lg bg-slate-50 px-3 py-2 font-mono font-bold tracking-widest">
+                  {code}
+                </span>
+                <CopyButton text={code} />
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => setCode(Math.random().toString(36).slice(2, 10).toUpperCase())}
+              >
+                Generate link code
+              </Button>
+            )}
+            <p className="mt-2 text-[11px] text-muted">
+              Linked: Shirin Akter (orders ✓, payments ✓, pay on behalf ✓)
+            </p>
+          </Card>
+        )}
         <Card className="space-y-2 p-5 text-sm">
           <p className="flex items-center gap-2 font-bold">
             <ShieldCheck size={16} /> Account & security

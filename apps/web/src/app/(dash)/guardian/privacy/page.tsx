@@ -1,8 +1,22 @@
 import { ShieldCheck } from "lucide-react";
 import { fixtures } from "@edukhata/contracts";
+import { ApiProblem } from "@/components/dash/ApiProblem";
+import type { LiveChild } from "@/components/dash/guardian-live";
 import { Card, CardHeader, PageHeader } from "@/components/ui";
+import { apiFetch } from "@/lib/api";
+import { authMode } from "@/lib/auth-mode";
 
-export default function GuardianPrivacy() {
+export default async function GuardianPrivacy() {
+  let rows = fixtures.children.map((c) => ({ id: c.studentId, name: c.name, p: c.permissions }));
+  if (authMode() === "wan") {
+    const res = await apiFetch("/guardian/children");
+    if (!res.ok) return <ApiProblem status={res.status} />;
+    rows = ((await res.json()) as LiveChild[]).map((c) => ({
+      id: c.studentId,
+      name: c.name,
+      p: c.permissions,
+    }));
+  }
   return (
     <>
       <PageHeader
@@ -21,14 +35,17 @@ export default function GuardianPrivacy() {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {fixtures.children.map((c) => (
-              <tr key={c.studentId}>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-muted">
+                  No children linked yet.
+                </td>
+              </tr>
+            )}
+            {rows.map((c) => (
+              <tr key={c.id}>
                 <td className="px-4 py-3 font-semibold">{c.name}</td>
-                {[
-                  c.permissions.viewOrders,
-                  c.permissions.viewPayments,
-                  c.permissions.payOnBehalf,
-                ].map((v, i) => (
+                {[c.p.viewOrders, c.p.viewPayments, c.p.payOnBehalf].map((v, i) => (
                   <td key={i} className="px-4 py-3 text-center">
                     {v ? "✓" : "—"}
                   </td>

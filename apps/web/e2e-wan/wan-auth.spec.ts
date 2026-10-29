@@ -186,6 +186,67 @@ test("WAN sign-in → onboarding → role-gated dashboards → admin roles → h
   await expect(sp).toHaveURL(/\/login\?next=%2Fstudent|\/login\?next=\/student/);
 });
 
+test("guardian links a child with a one-time code; the student controls and ends it", async ({
+  browser,
+}) => {
+  const WEB = "http://localhost:3200";
+  const onboard = (p: Page, data: object) =>
+    p.request.post(`${WEB}/api/me/onboarding`, { headers: { origin: WEB }, data });
+
+  const st = await browser.newContext();
+  const sp = await st.newPage();
+  const email = `kid.${run}@example.com`;
+  const kidName = `Tahsin ${STUDENT.split(" ")[1]}`;
+  await registerOnHub(sp.request, kidName, email);
+  await wanSignIn(sp);
+  expect(
+    (
+      await onboard(sp, {
+        kind: "student",
+        institution: "Dhaka College",
+        classLevel: "HSC 1st year",
+        subjects: ["ict"],
+      })
+    ).status(),
+  ).toBe(200);
+  await sp.goto("/student/profile");
+  await sp.getByRole("button", { name: "Generate link code" }).click();
+  const code = (await sp.getByTestId("guardian-code").textContent())!.trim();
+  expect(code).toMatch(/^[A-Z0-9]{8}$/);
+
+  const gu = await browser.newContext();
+  const gp = await gu.newPage();
+  await registerOnHub(gp.request, `Rokeya ${STUDENT.split(" ")[1]}`, `guardian.${run}@example.com`);
+  await wanSignIn(gp);
+  expect((await onboard(gp, { kind: "guardian" })).status()).toBe(200);
+  await gp.goto("/guardian/children");
+  await expect(gp.getByText("No children linked yet")).toBeVisible();
+  // A wrong code is refused with the same message as a wrong email.
+  await gp.getByLabel("Child's email or mobile").fill(email);
+  await gp.getByLabel("Link code").fill("ZZZZ2222");
+  await gp.getByRole("button", { name: "Link child" }).click();
+  await expect(gp.getByText("Email/phone or link code is not correct")).toBeVisible();
+  await gp.getByLabel("Link code").fill(code.toLowerCase());
+  await gp.getByRole("button", { name: "Link child" }).click();
+  await expect(gp.getByText(`${kidName} is linked`)).toBeVisible();
+  await expect(
+    gp.getByTestId("linked-children").getByText("HSC 1st year · Dhaka College"),
+  ).toBeVisible();
+
+  // The student sees the guardian, turns off payments, then unlinks.
+  await sp.goto("/student/profile");
+  const links = sp.getByTestId("guardian-links");
+  await expect(links.getByText(`Rokeya ${STUDENT.split(" ")[1]}`)).toBeVisible();
+  await links.getByLabel("View payments").uncheck();
+  await expect(links.getByLabel("View payments")).not.toBeChecked();
+  await gp.goto("/guardian/privacy");
+  await expect(gp.getByRole("row").filter({ hasText: kidName })).toContainText("✓—");
+  await links.getByRole("button", { name: "Unlink" }).click();
+  await expect(sp.getByText(/unlinked$/)).toBeVisible();
+  await gp.goto("/guardian/children");
+  await expect(gp.getByText("No children linked yet")).toBeVisible();
+});
+
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {
   const evil = await request.post("/api/me/onboarding", {
     headers: { origin: "https://evil.example" },
