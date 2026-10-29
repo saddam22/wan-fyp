@@ -86,3 +86,27 @@ export async function freshSubject(ctx: Ctx): Promise<string> {
   );
   return id;
 }
+
+export async function accountant(ctx: Ctx, name: string) {
+  const a = await student(ctx, name);
+  await grant(ctx, a.sub, "accountant");
+  return a;
+}
+
+/** A receiving account (bKash personal by default). */
+export async function account(ctx: Ctx, by: Person, extra: Record<string, unknown> = {}) {
+  const r = await by.b.post("/accountant/payment-accounts", {
+    method: "bkash",
+    channel: "personal",
+    name: "bKash",
+    number: "01700000000",
+    instructions: ["Send Money to this number"],
+    ...extra,
+  });
+  expect(r.statusCode, r.body).toBe(201);
+  return r.json() as { key: string };
+}
+
+let trx = 0;
+/** A TrxID nobody used yet. */
+export const newTrx = () => `TX${Date.now().toString(36).toUpperCase()}${++trx}`;

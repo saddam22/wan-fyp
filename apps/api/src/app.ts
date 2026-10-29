@@ -19,6 +19,7 @@ import { createDelivery } from "./market/delivery.ts";
 import { createMatching } from "./market/matching.ts";
 import { deliveryRoutes } from "./routes/delivery.ts";
 import { reviewRoutes } from "./routes/reviews.ts";
+import { paymentRoutes } from "./routes/payments.ts";
 import { matchingRoutes } from "./routes/matching.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { chatRoutes } from "./routes/chat.ts";
@@ -125,6 +126,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(matchingRoutes, deps);
   await app.register(deliveryRoutes, deps);
   await app.register(reviewRoutes, deps);
+  await app.register(paymentRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

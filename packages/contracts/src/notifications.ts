@@ -156,6 +156,24 @@ const order = (
 
 const ORDER_TYPES: NotificationTypeSpec[] = [
   order(
+    "payment.submitted",
+    (d) => `Payment to check: ${s(d.amount)}`,
+    (d) => `যাচাই করার পেমেন্ট: ${s(d.amount)}`,
+    { channels: ["in_app"] },
+  ),
+  order(
+    "payment.approved",
+    () => "Payment confirmed",
+    () => "পেমেন্ট নিশ্চিত হয়েছে",
+    { mandatory: true },
+  ),
+  order(
+    "payment.rejected",
+    (d) => `Payment not matched: ${s(d.note)}`,
+    (d) => `পেমেন্ট মেলেনি: ${s(d.note)}`,
+    { mandatory: true },
+  ),
+  order(
     "order.offer",
     () => "New order offer — accept before it expires",
     () => "নতুন অর্ডারের অফার — মেয়াদ শেষের আগে গ্রহণ করুন",

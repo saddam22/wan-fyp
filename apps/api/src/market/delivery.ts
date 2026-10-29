@@ -17,6 +17,32 @@ export const DISPUTABLE = [
   "approved",
 ] as const;
 
+/**
+ * A paid revision goes to the mentor (inside the caller's transaction, order locked).
+ * Used when its payment is approved; the caller notifies the mentor after commit.
+ */
+export async function activateRevisionTx(
+  c: Queryable,
+  o: OrderRow,
+  n: number,
+  actorId: string | null,
+) {
+  const r = await c.query(
+    "update order_revisions set payment_status = 'paid' where order_id = $1 and n = $2 and payment_status = 'due'",
+    [o.id, n],
+  );
+  if (!r.rowCount) throw new ApiError("conflict", "No revision is waiting for payment");
+  const row = await transition(c, o, ["delivered"], "revision_requested");
+  await addEvent(c, o.id, {
+    kind: "revision",
+    status: "revision_requested",
+    actorId,
+    note: `Revision ${n} paid and requested`,
+    details: { n },
+  });
+  return row;
+}
+
 /** Delivery, approval, revisions, disputes and closure. Every step is a guarded transition. */
 export function createDelivery(db: Db, notifications: Notifications, logger: Logger) {
   const notify = async (
@@ -178,20 +204,7 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
       const o = await tx(db, async (c) => {
         const o = await loadOrder(c, orderId, true);
         if (!o) throw new ApiError("not_found", "Order not found");
-        const r = await c.query(
-          "update order_revisions set payment_status = 'paid' where order_id = $1 and n = $2 and payment_status = 'due'",
-          [o.id, n],
-        );
-        if (!r.rowCount) throw new ApiError("conflict", "No revision is waiting for payment");
-        const row = await transition(c, o, ["delivered"], "revision_requested");
-        await addEvent(c, o.id, {
-          kind: "revision",
-          status: "revision_requested",
-          actorId,
-          note: `Revision ${n} paid and requested`,
-          details: { n },
-        });
-        return row;
+        return activateRevisionTx(c, o, n, actorId);
       });
       await notify("order.revision", o, "mentor", { n });
       return o;

@@ -291,7 +291,22 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
             ? "A mentor is already working on it — contact support or open a dispute"
             : "This order can't be cancelled now",
         );
+      const pays = (
+        await c.query<{ status: string }>(
+          "select status from payments where order_id = $1 for update",
+          [o.id],
+        )
+      ).rows;
+      if (pays.some((p) => p.status === "submitted"))
+        throw new ApiError(
+          "conflict",
+          "A payment is being checked — wait for the decision, then cancel",
+        );
       const row = await transition(c, o, from, "cancelled", { cancelled_at: new Date() });
+      await c.query(
+        "update payments set status = 'cancelled', updated_at = now() where order_id = $1 and status in ('pending', 'rejected')",
+        [o.id],
+      );
       await c.query(
         "update order_offers set status = 'withdrawn', responded_at = now() where order_id = $1 and status = 'offered'",
         [o.id],

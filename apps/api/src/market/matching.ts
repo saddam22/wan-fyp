@@ -239,6 +239,25 @@ export function createMatching(
   }
 
   return {
+    /** Sends the first (or next) wave for an order already in matching. */
+    kick(orderId: string) {
+      return withOrder(orderId, (c, o, after) => wave(c, o, after));
+    },
+
+    /** Moves a paid order into matching (no wave yet); call kick() after commit. */
+    async enterMatchingTx(c: Queryable, o: OrderRow, actorId: string | null) {
+      const row = await transition(c, o, ["awaiting_payment", "payment_review"], "matching", {
+        matching_started_at: new Date(),
+      });
+      await addEvent(c, o.id, {
+        kind: "matching",
+        status: "matching",
+        actorId,
+        note: "Payment approved — looking for a mentor",
+      });
+      return row;
+    },
+
     /** Called when payment is approved (Phase 5): the order starts looking for a mentor. */
     startMatching(orderId: string, actorId: string | null) {
       return withOrder(orderId, async (c, o, after) => {
