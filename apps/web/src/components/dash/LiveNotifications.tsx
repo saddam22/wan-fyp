@@ -15,7 +15,7 @@ export interface NotificationPage {
   counts: { unread: number; unseen: number };
 }
 
-type Category = "account" | "family" | "referral" | "messages";
+type Category = "account" | "family" | "referral" | "messages" | "orders";
 type CategoryPref = { enabled: boolean; push: boolean; email: boolean };
 
 const CATEGORIES: { id: Category; label: string }[] = [
@@ -23,6 +23,7 @@ const CATEGORIES: { id: Category; label: string }[] = [
   { id: "family", label: "Guardian links" },
   { id: "referral", label: "Referrals" },
   { id: "messages", label: "Messages & calls" },
+  { id: "orders", label: "Orders" },
 ];
 /** The social module's default for a category nobody has changed. */
 const DEFAULT_PREF: CategoryPref = { enabled: true, push: true, email: false };

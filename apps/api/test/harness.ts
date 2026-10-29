@@ -44,6 +44,7 @@ export function useHarness(extra: Partial<AppOptions> = {}): Ctx {
       EDK_CLIENT_SECRET: secret,
       HUB_CHECK_INTERVAL_SEC: "0",
       CHAT_UPLOAD_DIR: mkdtempSync(join(tmpdir(), "edk-chat-")),
+      ORDER_FILES_DIR: mkdtempSync(join(tmpdir(), "edk-orders-")),
     } as NodeJS.ProcessEnv);
     ctx.app = await buildApp({
       db: ctx.db,

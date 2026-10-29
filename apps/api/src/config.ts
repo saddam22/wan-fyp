@@ -27,8 +27,10 @@ export interface Config {
   trustProxy: string;
   /** HMAC secret for chat tokens, signed upload URLs and attachment URLs (32+ chars). */
   chatSecret: string;
-  /** Where chat files are stored on disk (single API instance; see chat/storage.ts). */
+  /** Where chat files are stored on disk (single API instance; see lib/disk-storage.ts). */
   chatUploadDir: string;
+  /** Where order files (requirements, previews, finals) are stored on disk. */
+  orderFilesDir: string;
   /** Web Push (VAPID). Null = push off; in-app notifications still work. */
   vapid: { publicKey: string; privateKey: string; subject: string } | null;
 }
@@ -67,6 +69,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     hubCheckIntervalMs: Number(env.HUB_CHECK_INTERVAL_SEC ?? 600) * 1000,
     chatSecret,
     chatUploadDir: env.CHAT_UPLOAD_DIR ?? ".data/chat-uploads",
+    orderFilesDir: env.ORDER_FILES_DIR ?? ".data/order-files",
     trustProxy: env.TRUST_PROXY ?? "127.0.0.1,::1,::ffff:127.0.0.1",
     vapid:
       env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT

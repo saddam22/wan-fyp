@@ -22,7 +22,7 @@ const toDto = (n: NotificationRecord): NotificationDto => ({
 const prefsBody = z.object({
   categories: z
     .partialRecord(
-      z.enum(["account", "family", "referral", "messages"]),
+      z.enum(["account", "family", "referral", "messages", "orders"]),
       z.object({ enabled: z.boolean(), push: z.boolean(), email: z.boolean() }),
     )
     .optional(),

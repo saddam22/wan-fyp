@@ -5,7 +5,7 @@ import type { Config } from "../config.ts";
 import type { Db } from "../db.ts";
 import type { Deps } from "../deps.ts";
 import { edukhataChatHost } from "./host.ts";
-import { diskChatStorage } from "./storage.ts";
+import { diskStorage } from "../lib/disk-storage.ts";
 import { chatTokens } from "./tokens.ts";
 
 /** Browsers reach the API at <web>/api, so the module's own URLs carry that prefix. */
@@ -33,10 +33,11 @@ export function createEdukhataChat(
   },
 ) {
   const tokens = chatTokens(config.chatSecret);
-  const storage = diskChatStorage(
+  const storage = diskStorage(
     config.chatUploadDir,
     config.chatSecret,
     `${CHAT_PUBLIC_PREFIX}-files`,
+    "chat",
   );
   const chat = createChatModule({
     pool: db,

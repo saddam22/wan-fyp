@@ -7,7 +7,7 @@ import type { Lang } from "./format";
 
 export interface NotificationTypeSpec {
   type: string;
-  category: "account" | "family" | "referral" | "messages";
+  category: "account" | "family" | "referral" | "messages" | "orders";
   /** Security and access changes ignore opt-outs. */
   mandatory?: boolean;
   /** Repeated events with the same groupKey merge ("3 new messages"). */
@@ -135,6 +135,82 @@ export const NOTIFICATION_TYPES: NotificationTypeSpec[] = [
     },
   },
 ];
+
+/** Order notifications: the API passes `link` (each recipient's own area) and code/title. */
+const order = (
+  type: string,
+  en: (d: Record<string, string | number | boolean>) => string,
+  bn: (d: Record<string, string | number | boolean>) => string,
+  opts: Partial<Pick<NotificationTypeSpec, "mandatory" | "channels">> = {},
+): NotificationTypeSpec => ({
+  type,
+  category: "orders",
+  channels: opts.channels ?? ["in_app", "push"],
+  ...(opts.mandatory ? { mandatory: true } : {}),
+  link: (p) => s(p.link) || "/",
+  text: {
+    en: (d) => ({ title: en(d), body: `${s(d.code)} · ${s(d.title)}` }),
+    bn: (d) => ({ title: bn(d), body: `${s(d.code)} · ${s(d.title)}` }),
+  },
+});
+
+const ORDER_TYPES: NotificationTypeSpec[] = [
+  order(
+    "order.offer",
+    () => "New order offer — accept before it expires",
+    () => "নতুন অর্ডারের অফার — মেয়াদ শেষের আগে গ্রহণ করুন",
+  ),
+  order(
+    "order.assigned",
+    (d) => `${s(d.mentor)} is working on your order`,
+    (d) => `${s(d.mentor)} আপনার অর্ডারে কাজ করছেন`,
+  ),
+  order(
+    "order.delivered",
+    () => "Your work is ready for review",
+    () => "আপনার কাজ দেখার জন্য প্রস্তুত",
+  ),
+  order(
+    "order.revision",
+    (d) => `Revision ${s(d.n)} requested`,
+    (d) => `রিভিশন ${s(d.n)} চাওয়া হয়েছে`,
+  ),
+  order(
+    "order.approved",
+    () => "The student approved your work",
+    () => "শিক্ষার্থী আপনার কাজ অনুমোদন করেছেন",
+  ),
+  order(
+    "order.cancelled",
+    () => "Order cancelled",
+    () => "অর্ডার বাতিল হয়েছে",
+  ),
+  order(
+    "order.reassigned",
+    () => "Your order has a new mentor",
+    () => "আপনার অর্ডারে নতুন মেন্টর",
+  ),
+  order(
+    "order.unassigned",
+    () => "You were removed from an order",
+    () => "আপনাকে একটি অর্ডার থেকে সরানো হয়েছে",
+    { mandatory: true },
+  ),
+  order(
+    "order.needs_assignment",
+    () => "No mentor accepted — assign one",
+    () => "কোনো মেন্টর গ্রহণ করেননি — একজনকে দিন",
+    { channels: ["in_app"] },
+  ),
+  order(
+    "order.dispute",
+    (d) => (d.resolved ? "Dispute resolved" : "Dispute opened"),
+    (d) => (d.resolved ? "বিরোধের নিষ্পত্তি হয়েছে" : "বিরোধ খোলা হয়েছে"),
+    { mandatory: true },
+  ),
+];
+
+NOTIFICATION_TYPES.push(...ORDER_TYPES);
 
 export function renderNotification(
   type: string,

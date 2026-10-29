@@ -17,6 +17,7 @@ import { createEdukhataChat } from "./chat/module.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { chatRoutes } from "./routes/chat.ts";
 import { mentorRoutes } from "./routes/mentors.ts";
+import { orderRoutes } from "./routes/orders.ts";
 
 export interface AppOptions extends Omit<Deps, "notifications" | "chat" | "calling"> {
   /** Defaults to the social-module notification service on `db`. */
@@ -98,6 +99,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(chatRoutes, deps);
   await app.register(catalogRoutes, deps);
   await app.register(mentorRoutes, deps);
+  await app.register(orderRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

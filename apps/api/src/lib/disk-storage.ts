@@ -4,12 +4,12 @@ import { dirname, join, resolve } from "node:path";
 import type { ChatStorage } from "@chat-module/server";
 
 /**
- * Chat files on local disk, uploaded through a signed, short-lived URL on the API
- * (the same contract as an S3/R2 pre-signed PUT). Files are never public: the chat
- * module checks membership and serves them through signed attachment URLs.
- * Single-instance only; use S3-compatible storage before running several API servers.
+ * Private files on local disk, uploaded through a signed, short-lived URL on the API
+ * (the same contract as an S3/R2 pre-signed PUT). Files are never public: whoever owns
+ * the file record checks access and serves it. `purpose` keeps signatures of different
+ * stores apart. Single-instance only; use S3-compatible storage before scaling out.
  */
-export function diskChatStorage(root: string, secret: string, uploadBase: string) {
+export function diskStorage(root: string, secret: string, uploadBase: string, purpose: string) {
   const base = resolve(root);
   const path = (key: string) => {
     const full = resolve(join(base, key));
@@ -17,7 +17,7 @@ export function diskChatStorage(root: string, secret: string, uploadBase: string
     return full;
   };
   const mac = (key: string, exp: number, size: number, type: string) =>
-    createHmac("sha256", `edukhata-chat-upload:${secret}`)
+    createHmac("sha256", `edukhata-${purpose}-upload:${secret}`)
       .update(`${key}\n${exp}\n${size}\n${type}`)
       .digest("base64url");
 
@@ -50,4 +50,4 @@ export function diskChatStorage(root: string, secret: string, uploadBase: string
     },
   } satisfies ChatStorage & { verifyUpload: unknown };
 }
-export type DiskChatStorage = ReturnType<typeof diskChatStorage>;
+export type DiskStorage = ReturnType<typeof diskStorage>;
