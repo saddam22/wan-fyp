@@ -10,6 +10,7 @@ import { diskStorage } from "../lib/disk-storage.ts";
 import { ApiError } from "../lib/errors.ts";
 import { requireUser } from "../lib/session.ts";
 import { activateRevisionTx } from "../market/delivery.ts";
+import { postPaymentReceived } from "../market/ledger.ts";
 import { addEvent, loadOrder, orderLink, transition } from "../market/orders.ts";
 import {
   duePayment,
@@ -426,8 +427,10 @@ export const paymentRoutes: FastifyPluginAsync<Deps> = async (
               "The order changed meanwhile (cancelled?) — reject this payment with a note and refund it",
             );
           order = await matching.enterMatchingTx(c, o, s.user.id);
+          await postPaymentReceived(c, p as PaymentRow & { account_id: string }, o.code, s.user.id);
         } else {
           order = await activateRevisionTx(c, o, p.revision_n!, s.user.id);
+          await postPaymentReceived(c, p as PaymentRow & { account_id: string }, o.code, s.user.id);
         }
       } else {
         if (p.purpose === "order" && o.status === "payment_review")

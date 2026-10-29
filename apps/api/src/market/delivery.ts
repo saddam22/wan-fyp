@@ -3,6 +3,7 @@ import { tx } from "../db.ts";
 import type { Deps } from "../deps.ts";
 import { ApiError } from "../lib/errors.ts";
 import { addEvent, loadOrder, orderLink, transition, type OrderRow } from "./orders.ts";
+import { postOrderAvailable, postOrderEarned } from "./ledger.ts";
 import { getSettings } from "./settings.ts";
 
 type Notifications = Deps["notifications"];
@@ -130,6 +131,7 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
           [o.id],
         );
         const row = await transition(c, o, ["delivered"], "approved", { approved_at: new Date() });
+        await postOrderEarned(c, row, studentId);
         await addEvent(c, o.id, {
           kind: "approved",
           status: "approved",
@@ -315,6 +317,7 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
           ],
         );
         const row = await transition(c, o, ["disputed"], to, set);
+        if (to === "approved") await postOrderEarned(c, row, actorId);
         await addEvent(c, o.id, {
           kind: "dispute_resolved",
           status: to,
@@ -334,6 +337,7 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
         const o = await loadOrder(c, orderId, true);
         if (!o) throw new ApiError("not_found", "Order not found");
         const row = await transition(c, o, ["approved"], "closed", { closed_at: new Date() });
+        await postOrderAvailable(c, row, actorId);
         await addEvent(c, o.id, { kind: "closed", status: "closed", actorId, note });
         return row;
       });

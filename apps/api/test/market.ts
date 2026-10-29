@@ -110,3 +110,42 @@ export async function account(ctx: Ctx, by: Person, extra: Record<string, unknow
 let trx = 0;
 /** A TrxID nobody used yet. */
 export const newTrx = () => `TX${Date.now().toString(36).toUpperCase()}${++trx}`;
+
+/** An order that was paid (approved by an accountant) and accepted + started by a mentor. */
+export async function paidOrder(ctx: Ctx, extra: Record<string, unknown> = {}) {
+  const acc = await accountant(ctx, `Acct ${Date.now() % 100000}`);
+  const bk = await account(ctx, acc);
+  const subject = await freshSubject(ctx);
+  const m = await mentor(ctx, `Earning Mentor ${subject}`, { subjects: [subject] });
+  const s = await student(ctx, `Paying ${subject}`);
+  const o = await placeOrder(s, { subjectId: subject, ...extra });
+  const pid = (await s.b.get(`/orders/${o.id}/payment`)).json().due.id as string;
+  expect(
+    (
+      await s.b.post(`/payments/${pid}/submit`, {
+        accountId: bk.key,
+        sender: "01766666666",
+        trxId: newTrx(),
+      })
+    ).statusCode,
+  ).toBe(200);
+  expect(
+    (await acc.b.post(`/accountant/payments/${pid}/decision`, { approve: true })).statusCode,
+  ).toBe(200);
+  const offer = (await m.b.get("/mentor/offers")).json()[0];
+  expect((await m.b.post(`/mentor/offers/${offer.id}/accept`)).statusCode).toBe(200);
+  expect((await m.b.post(`/mentor/orders/${o.id}/start`)).statusCode).toBe(200);
+  return { acc, bk, m, s, o, pid };
+}
+
+/** The mentor delivers a preview and a final file. */
+export async function deliverWork(ctx: Ctx, m: Person, orderId: string) {
+  const sharp = (await import("sharp")).default;
+  const png = await sharp({ create: { width: 40, height: 40, channels: 3, background: "#fff" } })
+    .png()
+    .toBuffer();
+  await upload(ctx, m, orderId, "preview", png, "image/png");
+  await upload(ctx, m, orderId, "final", PDF, "application/pdf");
+  const r = await m.b.post(`/mentor/orders/${orderId}/deliver`, {});
+  expect(r.statusCode, r.body).toBe(200);
+}
