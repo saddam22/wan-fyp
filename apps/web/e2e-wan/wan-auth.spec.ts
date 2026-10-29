@@ -284,7 +284,7 @@ test("a ?ref link opened before sign-up credits the referrer at onboarding", asy
   await expect(ap.getByText("A friend joined with your code")).toBeVisible();
 });
 
-test("a student messages EduKhata support in real time; no direct chats between students", async ({
+test("a student messages and calls EduKhata support in real time; no direct chats between students", async ({
   browser,
 }) => {
   const suffix = STUDENT.split(" ")[1]!;
@@ -330,6 +330,16 @@ test("a student messages EduKhata support in real time; no direct chats between 
   await expect(chat.locator(".cm-bubble__text", { hasText: "Checking it now" })).toBeVisible();
   await up.goto("/support-desk/notifications");
   await expect(up.getByText(`New message from Sumaiya ${suffix}`)).toBeVisible();
+
+  // A real WebRTC audio call from the chat header; it rings on any dashboard page.
+  await chat.getByRole("button", { name: `Audio call Joya ${suffix}` }).click();
+  await expect(sp.getByRole("dialog")).toContainText("Ringing…");
+  await expect(up.getByRole("dialog")).toContainText("Incoming audio call");
+  await up.getByRole("button", { name: "Accept call" }).click();
+  await expect(sp.locator(".agc-timer")).toBeVisible({ timeout: 20_000 });
+  await expect(up.locator(".agc-timer")).toBeVisible({ timeout: 20_000 });
+  await sp.getByRole("button", { name: "End call" }).click();
+  await expect(up.locator(".agc-timer")).toHaveCount(0);
 });
 
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {

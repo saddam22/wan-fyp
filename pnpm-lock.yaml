@@ -20,6 +20,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@agg/calling-server':
+        specifier: workspace:*
+        version: link:../../modules/calling/packages/calling-server
       '@amar/social-modules':
         specifier: workspace:*
         version: link:../../modules/social
@@ -84,9 +87,18 @@ importers:
 
   apps/web:
     dependencies:
+      '@agg/calling-client':
+        specifier: workspace:*
+        version: link:../../modules/calling/packages/calling-client
+      '@agg/calling-react':
+        specifier: workspace:*
+        version: link:../../modules/calling/packages/calling-react
       '@chat-module/client':
         specifier: workspace:*
         version: link:../../modules/chat/packages/client
+      '@chat-module/core':
+        specifier: workspace:*
+        version: link:../../modules/chat/packages/core
       '@chat-module/react':
         specifier: workspace:*
         version: link:../../modules/chat/packages/react

@@ -26,6 +26,36 @@ const USERS_SQL = `select u.id, u.name, u.status, coalesce(array_agg(r.role) fil
   from users u left join user_roles r on r.user_id = u.id`;
 
 /**
+ * Verifies a chat/call token and the EduKhata session behind it: not revoked, not
+ * expired, not idle, user active and onboarded (people without a role can't chat or call).
+ */
+export function sessionTokenAuth(db: Db, tokens: ChatTokens) {
+  return async (token: string) => {
+    const t = tokens.verify(token);
+    if (!t) return null;
+    const r = (
+      await db.query<{ user_id: string }>(
+        `select s.user_id from sessions s join users u on u.id = s.user_id
+          where s.id::text = $1 and s.revoked_at is null and s.expires_at > now()
+            and s.last_seen_at > now() - interval '12 hours' and u.status = 'active'
+            and exists (select 1 from user_roles r where r.user_id = u.id)`,
+        [t.sessionId],
+      )
+    ).rows[0];
+    return r ? { userId: r.user_id, expiresAt: t.expiresAt } : null;
+  };
+}
+
+/** True when one of the two people is EduKhata staff (the Phase 3 contact rule). */
+export async function involvesStaff(db: Db, a: string, b: string): Promise<boolean> {
+  const r = await db.query(
+    "select 1 from user_roles where user_id = any($1::uuid[]) and role = any($2::text[]) limit 1",
+    [[a, b], CHAT_STAFF],
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
  * The chat module's view of EduKhata: identity from EduKhata sessions, names from the
  * users table, and the marketplace rule for who may message whom.
  *
@@ -39,22 +69,7 @@ export function edukhataChatHost(db: Db, tokens: ChatTokens): ChatHost {
   const isStaff = (r: Row | undefined) => !!r && r.roles.some((x) => CHAT_STAFF.includes(x));
 
   return {
-    async authenticate(token) {
-      const t = tokens.verify(token);
-      if (!t) return null;
-      // Same rules as the cookie session: not revoked, not expired, not idle, user active,
-      // and onboarded (people without a marketplace role can't chat).
-      const r = (
-        await db.query<{ user_id: string }>(
-          `select s.user_id from sessions s join users u on u.id = s.user_id
-            where s.id::text = $1 and s.revoked_at is null and s.expires_at > now()
-              and s.last_seen_at > now() - interval '12 hours' and u.status = 'active'
-              and exists (select 1 from user_roles r where r.user_id = u.id)`,
-          [t.sessionId],
-        )
-      ).rows[0];
-      return r ? { userId: r.user_id, expiresAt: t.expiresAt } : null;
-    },
+    authenticate: sessionTokenAuth(db, tokens),
 
     async getUsers(ids) {
       return (await load(ids)).map(summary);
@@ -76,9 +91,6 @@ export function edukhataChatHost(db: Db, tokens: ChatTokens): ChatHost {
       return rows.map(summary);
     },
 
-    async canStartDirect(senderId, recipientId) {
-      const rows = await load([senderId, recipientId]);
-      return rows.some(isStaff);
-    },
+    canStartDirect: (senderId, recipientId) => involvesStaff(db, senderId, recipientId),
   };
 }

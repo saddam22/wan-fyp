@@ -15,7 +15,10 @@
     "e2e:wan": "playwright test -c playwright.wan.config.ts"
   },
   "dependencies": {
+    "@agg/calling-client": "workspace:*",
+    "@agg/calling-react": "workspace:*",
     "@chat-module/client": "workspace:*",
+    "@chat-module/core": "workspace:*",
     "@chat-module/react": "workspace:*",
     "@edukhata/contracts": "workspace:*",
     "@fontsource/hind-siliguri": "5.3.0",

@@ -7,6 +7,8 @@ import { createChatClient } from "@chat-module/client";
 import { ChatProvider, en, type ChatMessages } from "@chat-module/react";
 import { ChatApp } from "@chat-module/react/web";
 import { useT } from "@/lib/i18n/client";
+import { fetchRealtimeToken, getRealtimeToken } from "@/lib/realtime-token";
+import { ChatCallButtons } from "./LiveCalls";
 
 /** EduKhata wording where the module's defaults speak about its first host app. */
 const EN: ChatMessages = {
@@ -18,19 +20,6 @@ const BN: Partial<ChatMessages> = {
   "list.emptyHint": "নতুন চ্যাট দিয়ে এডুখাতা সাপোর্টকে লিখুন। অর্ডারের চ্যাট এখানে আসবে।",
   "new.search": "নাম লিখুন",
 };
-
-let cached: { token: string; exp: number } | null = null;
-
-/** Chat tokens come from the session cookie (GET /api/me/chat-token), 15 minutes each. */
-async function fetchToken(): Promise<string | null> {
-  const res = await fetch("/api/me/chat-token", { cache: "no-store" });
-  if (!res.ok) return (cached = null);
-  const t = (await res.json()) as { token: string; expiresAt: string };
-  cached = { token: t.token, exp: Date.parse(t.expiresAt) };
-  return t.token;
-}
-const getAccessToken = () =>
-  cached && cached.exp - Date.now() > 60_000 ? cached.token : fetchToken();
 
 /** The WAN chat module's messaging screen, signed in as the EduKhata user. */
 export function LiveChat({ userId }: { userId: string }) {
@@ -45,8 +34,8 @@ export function LiveChat({ userId }: { userId: string }) {
         prefix: "/api/chat",
         socketPath: "/api/chat/socket.io",
         userId,
-        getAccessToken,
-        refreshAccessToken: fetchToken,
+        getAccessToken: getRealtimeToken,
+        refreshAccessToken: fetchRealtimeToken,
       }),
     [userId],
   );
@@ -62,6 +51,7 @@ export function LiveChat({ userId }: { userId: string }) {
         <ChatApp
           conversationId={conversationId}
           onConversationChange={(id) => router.replace(id ? `${pathname}?c=${id}` : pathname)}
+          renderHeaderActions={(c) => <ChatCallButtons conversation={c} userId={userId} />}
         />
       </div>
     </ChatProvider>

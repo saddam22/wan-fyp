@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { canAccess, type Area } from "@edukhata/contracts";
 import { getSession } from "@/lib/session";
 import { Forbidden } from "./Forbidden";
+import { LiveCalls } from "./LiveCalls";
 import { DashboardShell } from "./Shell";
 
 /**
@@ -20,11 +21,14 @@ export async function AreaLayout({ area, children }: { area: Area; children: Rea
       </div>
     );
   }
-  return (
-    <DashboardShell area={area} user={session} live={session.mode === "wan"}>
+  const live = session.mode === "wan";
+  const shell = (
+    <DashboardShell area={area} user={session} live={live}>
       {children}
     </DashboardShell>
   );
+  // Signed in with WAN ID: calls can ring on any dashboard page.
+  return live ? <LiveCalls>{shell}</LiveCalls> : shell;
 }
 
 /** Page-level guard for super-admin-only admin pages. */

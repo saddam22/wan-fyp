@@ -12,14 +12,17 @@ import { meRoutes } from "./routes/me.ts";
 import { notificationRoutes } from "./routes/notifications.ts";
 import { referralRoutes } from "./routes/referrals.ts";
 import { createNotifications } from "./social/notifications.ts";
+import { createEdukhataCalling } from "./calling/module.ts";
 import { createEdukhataChat } from "./chat/module.ts";
 import { chatRoutes } from "./routes/chat.ts";
 
-export interface AppOptions extends Omit<Deps, "notifications" | "chat"> {
+export interface AppOptions extends Omit<Deps, "notifications" | "chat" | "calling"> {
   /** Defaults to the social-module notification service on `db`. */
   notifications?: Deps["notifications"];
   /** Defaults to the WAN chat module on `db`. */
   chat?: Deps["chat"];
+  /** Defaults to the WAN calling module on `db`. */
+  calling?: Deps["calling"];
   logger?: boolean | object;
 }
 
@@ -40,13 +43,19 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
       warn: (msg, meta) => app.log.warn(meta ?? {}, msg),
       error: (msg, meta) => app.log.error(meta ?? {}, msg),
     });
+  const chat = opts.chat ?? createEdukhataChat(opts.db, config, notifications, app.log);
   const deps: Deps = {
     ...opts,
     notifications,
-    chat: opts.chat ?? createEdukhataChat(opts.db, config, notifications, app.log),
+    chat,
+    calling: opts.calling ?? createEdukhataCalling(opts.db, chat, notifications, app.log),
   };
-  // The chat module keeps its own migration history (drizzle.__chat_migrations).
+  // The chat module keeps its own migration history (drizzle.__chat_migrations); the
+  // calling module creates its two tables if missing (calls, call_active_users).
+  // Tests reach the module handles (e.g. to attach the call gateway).
+  app.decorate("edkDeps", deps);
   await deps.chat.chat.migrate();
+  await deps.calling.store.migrate();
   await app.register(cookie);
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(rateLimit, { global: true, max: 600, timeWindow: "1 minute" });

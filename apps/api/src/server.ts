@@ -2,6 +2,7 @@ import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { createDb, migrate } from "./db.ts";
 import { createHub } from "./lib/hub.ts";
+import { attachCallGateway, createEdukhataCalling } from "./calling/module.ts";
 import { CHAT_SOCKET_PATH, createEdukhataChat } from "./chat/module.ts";
 import { createNotifications } from "./social/notifications.ts";
 
@@ -18,12 +19,18 @@ const chat = createEdukhataChat(db, config, notifications, {
   warn: (o, m) => console.warn(`[chat] ${m ?? ""}`, o),
   error: (o, m) => console.error(`[chat] ${m ?? ""}`, o),
 });
+const calling = createEdukhataCalling(db, chat, notifications, {
+  info: () => undefined,
+  warn: (o, m) => console.warn(`[calls] ${m ?? ""}`, o),
+  error: (o, m) => console.error(`[calls] ${m ?? ""}`, o),
+});
 const app = await buildApp({
   db,
   config,
   hub: createHub(config),
   notifications,
   chat,
+  calling,
   logger: { level: config.production ? "info" : "warn" },
 });
 await app.listen({ host: config.host, port: config.port });
@@ -32,10 +39,14 @@ const gateway = chat.chat.attachGateway(app.server, {
   allowedOrigins: [config.webUrl],
   path: CHAT_SOCKET_PATH,
 });
+// 1:1 calls (signalling only; media is peer-to-peer WebRTC). Browsers: <web>/api/calls/ws.
+const callGateway = attachCallGateway(app.server, db, chat, calling, config.webUrl);
+await calling.service.recoverAfterRestart(); // single API instance
+calling.service.start();
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
-    void gateway
-      .close()
+    calling.service.stop();
+    void Promise.all([callGateway.close(), gateway.close()])
       .then(() => app.close())
       .then(() => db.end())
       .finally(() => process.exit(0));

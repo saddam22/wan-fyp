@@ -124,7 +124,8 @@ export const NOTIFICATION_TYPES: NotificationTypeSpec[] = [
     type: "call.missed",
     category: "messages",
     channels: ["in_app", "push"],
-    link: () => "/messages",
+    link: (p) =>
+      p.conversationId ? `/messages?c=${encodeURIComponent(s(p.conversationId))}` : "/messages",
     text: {
       en: (d) => ({
         title: "Missed call",

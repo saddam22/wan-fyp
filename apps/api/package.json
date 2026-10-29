@@ -15,6 +15,7 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@agg/calling-server": "workspace:*",
     "@amar/social-modules": "workspace:*",
     "@chat-module/core": "workspace:*",
     "@chat-module/server": "workspace:*",

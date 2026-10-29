@@ -18,9 +18,12 @@ export default defineConfig({
     baseURL: "http://localhost:3200",
     ...devices["Desktop Chrome"],
     viewport: { width: 1366, height: 900 },
-    ...(process.env.CHROMIUM_PATH && {
-      launchOptions: { executablePath: process.env.CHROMIUM_PATH },
-    }),
+    // Calls: Chromium's fake camera/microphone, no permission prompts.
+    permissions: ["camera", "microphone"],
+    launchOptions: {
+      args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"],
+      ...(process.env.CHROMIUM_PATH && { executablePath: process.env.CHROMIUM_PATH }),
+    },
   },
   webServer: [
     {

@@ -1,3 +1,4 @@
+import type { EdukhataCalling } from "./calling/module.ts";
 import type { EdukhataChat } from "./chat/module.ts";
 import type { Config } from "./config.ts";
 import type { Db } from "./db.ts";
@@ -10,4 +11,5 @@ export interface Deps {
   hub: Hub;
   notifications: Notifications;
   chat: EdukhataChat;
+  calling: EdukhataCalling;
 }

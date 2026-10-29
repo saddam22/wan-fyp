@@ -208,3 +208,10 @@
   --cm-primary-soft: var(--color-accent-50, var(--color-brand-50));
   --cm-font: inherit;
 }
+
+/* WAN calling module, in EduKhata's brand colours (the module's defaults are green). */
+:root {
+  --agc-primary: var(--color-brand-600);
+  --agc-primary-dark: var(--color-brand);
+  --agc-primary-soft: var(--color-brand-50);
+}
