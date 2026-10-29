@@ -162,10 +162,13 @@ function Sidebar({
   area,
   roles,
   onNavigate,
+  live,
 }: {
   area: Area;
   roles: Role[];
   onNavigate?: () => void;
+  /** Live: no fixed demo counts next to links. */
+  live?: boolean;
 }) {
   const pathname = usePathname();
   const isSuper = roles.includes("super_admin");
@@ -181,7 +184,7 @@ function Sidebar({
           )}
           <ul className="space-y-0.5">
             {g.links
-              .filter((l) => !l.superOnly || isSuper)
+              .filter((l) => (!l.superOnly || isSuper) && (!l.liveOnly || live))
               .map((l) => {
                 const Icon = ICONS[l.icon] ?? LayoutDashboard;
                 const active =
@@ -203,7 +206,7 @@ function Sidebar({
                     >
                       <Icon size={17} className="shrink-0" />
                       <span className="flex-1 truncate">{l.label}</span>
-                      {l.badge !== undefined && (
+                      {l.badge !== undefined && !live && (
                         <span
                           className={cn(
                             "rounded-full px-1.5 text-[10px] font-bold",
@@ -261,7 +264,7 @@ export function DashboardShell({
         <p className="mx-5 mt-4 rounded-lg bg-[var(--color-accent-50)] px-3 py-2 text-xs font-bold text-[var(--color-accent)]">
           {AREA_TITLE[area]}
         </p>
-        <Sidebar area={area} roles={user.roles} />
+        <Sidebar area={area} roles={user.roles} live={live} />
         <div className="border-t border-line p-3">
           <Link
             href="/contact"
@@ -294,7 +297,12 @@ export function DashboardShell({
             <p className="mx-4 mt-3 rounded-lg bg-[var(--color-accent-50)] px-3 py-2 text-xs font-bold text-[var(--color-accent)]">
               {AREA_TITLE[area]}
             </p>
-            <Sidebar area={area} roles={user.roles} onNavigate={() => setDrawer(false)} />
+            <Sidebar
+              area={area}
+              roles={user.roles}
+              live={live}
+              onNavigate={() => setDrawer(false)}
+            />
           </aside>
         </div>
       )}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-29 — Phase 5: payments and money
+
+- Manual payments in ICTSpark's flow (bKash/Nagad/Rocket/bank, TrxID + optional proof), with ICTSpark's gaps closed: sign-in and ownership, a unique TrxID index, private proof, accountant verification in one transaction with the ledger and the order.
+- Double-entry ledger (balanced and immutable by database triggers, idempotent postings); 20/80 commission frozen per order; mentor earnings pending at approval, available at closure.
+- Refunds (cancellations, dispute decisions) and mentor payouts with maker-checker; reconciliation per receiving account; invoices (no VAT, decision Q19).
+- Web: pay pages, payments and invoices for students and guardians, accountant verification/payouts/refunds/ledger/reconciliation/receiving accounts/overview, mentor earnings and payouts. Demo-only nav counts hidden with the real backend.
+- Tests: API 76; real end-to-end 6, including the full journey order → pay → verify → match → deliver → approve → close → payout; UI 401.
+
 ## 2026-10-29 — Phase 4: marketplace core
 
 - Catalog, price list and business rules (commission 20%, 2 free revisions, matching timings; super-admin editable, audited); mentor profiles for matching.

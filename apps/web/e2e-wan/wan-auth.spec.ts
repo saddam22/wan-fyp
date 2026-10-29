@@ -68,6 +68,17 @@ async function wanSignIn(page: Page) {
   await page.waitForURL((u) => u.host === "localhost:3200" && !u.pathname.startsWith("/api/"));
 }
 
+/** Pauses mentors left in the e2e database by earlier runs, so offers go to this run's mentor. */
+function pauseOtherMentors() {
+  execFileSync(
+    "psql",
+    [`${PG}/edukhata_e2e`, "-c", "update mentor_profiles set available = false"],
+    {
+      stdio: "pipe",
+    },
+  );
+}
+
 function grantRole(email: string, role: string) {
   execFileSync("pnpm", ["--filter", "@edukhata/api", "grant-role", email, role], {
     env: { ...process.env, DATABASE_URL: `${PG}/edukhata_e2e` },
@@ -76,6 +87,12 @@ function grantRole(email: string, role: string) {
 }
 
 test.describe.configure({ mode: "serial" });
+
+/**
+ * The super admin from the first test, kept signed in for later tests: the hub allows
+ * 10 registrations per 15 minutes from one address, and the suite needs more people.
+ */
+let superAdmin: { page: Page; email: string } | undefined;
 
 test("WAN sign-in → onboarding → role-gated dashboards → admin roles → hub suspension", async ({
   browser,
@@ -114,6 +131,7 @@ test("WAN sign-in → onboarding → role-gated dashboards → admin roles → h
   await wanSignIn(ap);
   await expect(ap).toHaveURL(/\/onboarding$/);
   grantRole(adminEmail, "super_admin");
+  superAdmin = { page: ap, email: adminEmail };
   await ap.goto("/admin/users");
   await expect(ap.getByRole("heading", { name: "Users" })).toBeVisible();
 
@@ -342,7 +360,7 @@ test("a student messages and calls EduKhata support in real time; no direct chat
   await expect(up.locator(".agc-timer")).toHaveCount(0);
 });
 
-test("a student places an order with a file at the server's price; a mentor sets up matching", async ({
+test("full order journey: order → pay → verify → match → deliver → approve → close → payout", async ({
   browser,
 }) => {
   const suffix = STUDENT.split(" ")[1]!;
@@ -366,7 +384,7 @@ test("a student places an order with a file at the server's price; a mentor sets
   await p
     .getByLabel("Instructions")
     .fill("Dhaka board. Chapter 2 experiments, labelled diagrams, neat handwriting.");
-  await p.getByLabel("Pages").fill("8");
+  await p.getByLabel("Pages").fill("13");
   await p.locator('input[type="file"]').setInputFiles({
     name: "syllabus.pdf",
     mimeType: "application/pdf",
@@ -380,18 +398,20 @@ test("a student places an order with a file at the server's price; a mentor sets
     .fill(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T10:00`);
   await p.getByRole("button", { name: "Next" }).click();
   await p.getByRole("checkbox").check();
-  // 8 pages × ৳50 from the API's price list.
-  await p.getByRole("button", { name: /Place order · ৳400/ }).click();
+  // 13 pages × ৳50 from the API's price list (the mentor's 80% clears the ৳500 minimum payout).
+  await p.getByRole("button", { name: /Place order · ৳650/ }).click();
   await expect(p).toHaveURL(/\/student\/orders\/[0-9a-f-]{36}$/);
   await expect(p.getByText("Biology practical khata, chapter 2").first()).toBeVisible();
   await expect(p.getByText("syllabus.pdf")).toBeVisible();
-  await expect(p.getByText("Payment: next step")).toBeVisible();
+  await expect(p.getByRole("link", { name: "Pay now" })).toBeVisible();
+  const orderId = p.url().split("/").pop()!;
   await p.goto("/student/orders");
   await expect(
     p.getByRole("row").filter({ hasText: "Biology practical khata, chapter 2" }),
   ).toBeVisible();
 
-  // A mentor turns on matching for their subjects.
+  // A mentor turns on matching for their subjects (the only available one).
+  pauseOtherMentors();
   const mEmail = `mentor.${run}@example.com`;
   const mc = await browser.newContext();
   const mp = await mc.newPage();
@@ -406,6 +426,100 @@ test("a student places an order with a file at the server's price; a mentor sets
   await expect(mp.getByText("Profile saved")).toBeVisible();
   await mp.goto("/mentor/offers");
   await expect(mp.getByText("0 open offers")).toBeVisible();
+
+  // Accounts team: an accountant who is also an admin adds the receiving account.
+  let ap = superAdmin?.page;
+  if (!ap) {
+    const aEmail = `accounts.${run}@example.com`;
+    ap = await (await browser.newContext()).newPage();
+    await registerOnHub(ap.request, `Karim ${suffix}`, aEmail);
+    await wanSignIn(ap);
+    grantRole(aEmail, "accountant");
+    grantRole(aEmail, "admin");
+  }
+  await ap.goto("/accountant/accounts");
+  await ap.getByRole("button", { name: "Add account" }).click();
+  await ap.getByLabel("Display name").fill("EduKhata bKash");
+  await ap.getByLabel("Number / account no.").fill("01700000001");
+  await ap.getByLabel("Instructions (one per line)").fill("Open bKash and choose Send Money");
+  await ap.getByRole("button", { name: "Save" }).click();
+  await expect(ap.getByText("Account saved")).toBeVisible();
+
+  // The student pays by bKash and submits the TrxID.
+  const trx = `T${run}`.toUpperCase().slice(0, 12).padEnd(10, "X");
+  await p.goto(`/student/orders/${orderId}`);
+  await p.getByRole("link", { name: "Pay now" }).click();
+  await expect(p).toHaveURL(new RegExp(`/student/orders/${orderId}/pay$`));
+  await expect(p.getByText("01700000001")).toBeVisible();
+  await p.getByLabel("Sender number").fill("01811111111");
+  await p.getByLabel("Transaction ID (TrxID)").fill(trx);
+  await p.getByRole("button", { name: "Submit for verification" }).click();
+  await expect(p.getByText("Payment submitted for verification")).toBeVisible();
+
+  // The accountant matches it with the statement and approves: matching starts.
+  await ap.goto("/accountant/payments");
+  await ap.getByRole("row").filter({ hasText: trx }).click();
+  await ap.getByRole("button", { name: "Approve" }).click();
+  await expect(ap.getByText(/approved$/).first()).toBeVisible();
+
+  // The mentor gets the offer and accepts it, starts and delivers.
+  await mp.goto("/mentor/offers");
+  await mp.getByRole("button", { name: "Accept" }).first().click();
+  await mp.goto(`/mentor/orders/${orderId}`);
+  await mp.getByRole("button", { name: "Start work" }).click();
+  await expect(mp.getByText("Work started")).toBeVisible();
+  await mp.getByRole("button", { name: "Deliver work" }).click();
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAfUlEQVRoge2SAQkAURSDFt8sl8VQF2M8/sAAOhY+T5O6AQuwviK7kHdJ3YAFWF+RXci7pG7AAqyvyC7kXVI3YAHWV2QX8i6pG7AA6yuyC3mX1A1YgPUV2YW8S+oGLMD6iuxC3iV1AxZgfUV2Ie+SugELsL4iu5B3Sd2AxwN+DczpWk8Fb+cAAAAASUVORK5CYII=",
+    "base64",
+  );
+  await mp
+    .locator("#dprev")
+    .setInputFiles({ name: "page1.png", mimeType: "image/png", buffer: png });
+  await mp.locator("#dfinal").setInputFiles({
+    name: "khata.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"),
+  });
+  await mp.getByLabel("Note to student").fill("All 13 pages done, diagrams labelled.");
+  await mp.getByRole("button", { name: "Submit delivery" }).click();
+  await expect(mp.getByText("Delivery submitted")).toBeVisible();
+
+  // The student approves; EduKhata closes the order; the mentor's 80% becomes available.
+  await p.goto(`/student/orders/${orderId}`);
+  await p.getByRole("button", { name: "Approve work" }).click();
+  await p.getByRole("button", { name: "Approve & release payment" }).click();
+  await expect(p.getByText("Work approved")).toBeVisible();
+  await ap.goto(`/admin/orders/${orderId}`);
+  await ap.getByRole("button", { name: "Close order" }).click();
+  await expect(ap.getByText("Order closed")).toBeVisible();
+  await mp.goto("/mentor/earnings");
+  await expect(mp.getByText("৳520").first()).toBeVisible();
+
+  // The student's invoice exists for the verified payment.
+  await p.goto("/student/payments");
+  await p.getByRole("main").getByRole("link", { name: "Invoice", exact: true }).first().click();
+  await expect(p.getByText("Total paid")).toBeVisible();
+  await expect(p.getByText("৳650").first()).toBeVisible();
+
+  // Payout: the mentor asks, the accountant approves, and a second person must send it.
+  await mp.goto("/mentor/payouts");
+  await mp.getByLabel("Amount (৳)").fill("520");
+  await mp.getByLabel("Mobile number").fill("01922222222");
+  await mp.getByRole("button", { name: "Request payout" }).click();
+  await expect(mp.getByText("Your request is with the accounts team.")).toBeVisible();
+  await ap.goto("/accountant/payouts");
+  const row = ap.getByRole("row").filter({ hasText: `Nadia ${suffix}` });
+  await row.getByRole("button", { name: "Approve" }).click();
+  await expect(ap.getByText("Payout approved")).toBeVisible();
+  await row.getByRole("button", { name: "Mark paid" }).click();
+  await ap.getByLabel("Transfer reference").fill("PAYOUT12345");
+  await ap.getByRole("button", { name: "Confirm" }).click();
+  await expect(ap.getByText("A second person must send the payout")).toBeVisible();
+
+  // The ledger stays balanced throughout.
+  await ap.goto("/accountant");
+  await expect(ap.getByText("balanced", { exact: true })).toBeVisible();
 });
 
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {

@@ -52,4 +52,15 @@ Migrations run in name order, each once, in a transaction (`schema_migrations`).
 | `reviews`                                                   | `007_reviews.sql`             | one per order                                                           | rating 1–5                                                    |
 | `order_conversations`                                       | `009_order_conversations.sql` | order → chat conversation                                               | —                                                             |
 
-Module tables are created by the modules themselves on API start, so they follow upgrades of the pinned submodule. The calling tables use `text` ids without a foreign key to `users` (module design). Orders, payments, ledger and the rest arrive with Phases 4–5.
+### Added in Phase 5
+
+| Table                                   | Migration                 | Purpose                                    | Key constraints                                                                                                                      |
+| --------------------------------------- | ------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `payment_accounts`                      | `010_payments.sql`        | receiving bKash/Nagad/Rocket/bank accounts | bank ⇔ bank channel                                                                                                                  |
+| `payments`                              | `010`                     | one per order price or paid revision       | invoice number unique; one live payment per (order, purpose, revision) (partial unique index); `payments_trx_unique` (method, TrxID) |
+| `payment_attempts`                      | `010`                     | every submission and its decision          | append-only by the API                                                                                                               |
+| `ledger_transactions`, `ledger_entries` | `011_ledger.sql`          | double-entry journal                       | deferred trigger: each transaction sums to 0; update/delete refused; `idempotency_key` unique                                        |
+| `refunds`                               | `012_refunds_payouts.sql` | refund decisions, approval, transfer       | reference unique; status flow requested → approved → paid                                                                            |
+| `payouts`                               | `012`                     | mentor payout requests                     | `payouts_one_open` (one open per mentor); reference unique                                                                           |
+
+Module tables are created by the modules themselves on API start, so they follow upgrades of the pinned submodule. The calling tables use `text` ids without a foreign key to `users` (module design). Money tables (Phase 5) use signed integer paisa (`bigint`).

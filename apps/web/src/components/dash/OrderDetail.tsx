@@ -262,9 +262,17 @@ export function OrderDetail({
           </Button>
         </>
       )}
-      {viewer === "student" && order.status === "awaiting_payment" && live && (
-        <span className="text-xs font-semibold text-muted">Payment: next step</span>
-      )}
+      {live &&
+        (viewer === "student" || viewer === "guardian") &&
+        (order.status === "awaiting_payment" ||
+          order.revisions.some((r) => r.paymentStatus === "due")) && (
+          <Link
+            href={`/${viewer}/orders/${order.id}/pay`}
+            className="inline-flex h-10 items-center rounded-[10px] bg-[var(--color-accent)] px-4 text-sm font-semibold text-white"
+          >
+            Pay now
+          </Link>
+        )}
       {viewer === "student" && order.status === "awaiting_payment" && !live && (
         <Link
           href="/student/payments/p1/pay"

@@ -17,6 +17,13 @@ const PARAMS: [RegExp, string][] = [
   [/^\/support-desk\/tickets\/\[id\]/, "tk3"],
 ];
 
+/** Pages that exist only with the real backend (AUTH_MODE=wan); covered by e2e-wan. */
+const LIVE_ONLY = [
+  /\/invoices\/\[id\]$/,
+  /\/orders\/\[id\]\/pay$/,
+  /^\/accountant\/(accounts|reconciliation)$/,
+];
+
 /** Every page route in src/app, with dynamic segments filled in. */
 export function allRoutes(): string[] {
   const root = fileURLToPath(new URL("../src/app", import.meta.url));
@@ -32,6 +39,7 @@ export function allRoutes(): string[] {
             .split(/[\\/]/)
             .filter((s) => s && !s.startsWith("("))
             .join("/");
+        if (LIVE_ONLY.some((re) => re.test(r))) continue;
         for (const [re, v] of PARAMS) if (re.test(r)) r = r.replace(/\[[^\]]+\]/, v);
         out.push(r === "/" ? "/" : r.replace(/\/$/, ""));
       }

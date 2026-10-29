@@ -1,3 +1,5 @@
+import { LivePayments } from "@/components/dash/LiveOrders";
+import { authMode } from "@/lib/auth-mode";
 import { fixtures, formatMoney } from "@edukhata/contracts";
 import { PaymentsTable } from "@/components/dash/PaymentsTable";
 import { Card, PageHeader, StatCard } from "@/components/ui";
@@ -5,6 +7,13 @@ import { CheckCircle2, Clock, Undo2 } from "lucide-react";
 import { getT } from "@/lib/i18n/server";
 
 export default async function StudentPayments() {
+  if (authMode() === "wan")
+    return (
+      <>
+        <PageHeader title="Payments" sub="Your payments and their verification." />
+        <LivePayments base="/student" />
+      </>
+    );
   const { lang } = await getT();
   const mine = fixtures.payments.filter((p) => p.payerName === fixtures.me.name);
   const paid = mine

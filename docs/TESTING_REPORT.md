@@ -1,5 +1,19 @@
 # Testing Report
 
+## Phase 5 — payments and money (2026-10-29)
+
+| Suite                             | Result                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API integration (real PostgreSQL) | **76 / 76** (+15): payments 6, ledger 4, money 5                                                                                                                                                                                                                                                                                            |
+| Real end-to-end (`pnpm e2e:wan`)  | **6 / 6**: the order journey now runs to the end — receiving account → pay by TrxID → accountant approves → offer accepted → start → deliver (watermarked preview + final) → student approves → admin closes → mentor sees ৳520 (80% of ৳650) → invoice → payout requested → approved → the approver is refused as sender → trial balance 0 |
+| Demo UI suite                     | 401 pass (live-only pages are excluded from the demo sweep and hidden from the demo sidebar)                                                                                                                                                                                                                                                |
+
+Money evidence: every transaction balances (database trigger), edits and deletes of entries are refused, re-posting an event is a no-op; concurrent submissions of one TrxID give one success; odd prices round the mentor share down; refunds can't exceed what is refundable; one open payout per mentor; maker-checker refusals for refunds and payouts.
+
+Bugs found and fixed: the hub's limit of 10 registrations per 15 minutes per address was exceeded by the suite (the journey now reuses the super admin); mentors left in the e2e database by earlier runs took the offer (they are paused at the start of the journey); a sidebar link named "Invoices" matched a locator for "Invoice".
+
+Not covered: the per-session submission rate limit; payout/refund transfer fees (not modelled, Q7).
+
 ## Phase 4 — marketplace core (2026-10-29)
 
 | Suite                             | Result                                                                                                                                        |

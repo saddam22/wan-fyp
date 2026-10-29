@@ -728,23 +728,56 @@ export function SkillTests({ tests }: { tests: SkillTest[] }) {
   );
 }
 
-export function PayoutRequest({ availableMinor }: { availableMinor: number }) {
+/** Payout form. Live: posts to the API (minimum and balance are checked there too). */
+export function PayoutRequest({
+  availableMinor,
+  live,
+  minMinor = 50000,
+}: {
+  availableMinor: number;
+  live?: boolean;
+  minMinor?: number;
+}) {
   const { lang } = useT();
   const toast = useToast();
+  const router = useRouter();
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("bkash");
+  const [account, setAccount] = useState("");
+  const [accountName, setAccountName] = useState("");
   const [err, setErr] = useState("");
-  const MIN = 500;
+  const [busy, setBusy] = useState(false);
+  const MIN = minMinor / 100;
   return (
     <form
       noValidate
       className="space-y-4"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         const v = Number(amount);
         if (!Number.isFinite(v) || v < MIN)
           return setErr(`Minimum payout is ${formatMoney(bdt(MIN), lang)}`);
         if (v * 100 > availableMinor) return setErr("Amount is more than your available balance");
+        if (live) {
+          setBusy(true);
+          try {
+            await orderApi("/mentor/payouts", "POST", {
+              amountMinor: Math.round(v * 100),
+              method,
+              account,
+              ...(accountName.trim() ? { accountName: accountName.trim() } : {}),
+            });
+            setErr("");
+            setAmount("");
+            toast({ tone: "success", title: "Payout requested" });
+            router.refresh();
+          } catch (x) {
+            setErr((x as Error).message);
+          } finally {
+            setBusy(false);
+          }
+          return;
+        }
         setErr("");
         setAmount("");
         toast({
@@ -778,12 +811,50 @@ export function PayoutRequest({ availableMinor }: { availableMinor: number }) {
           value={method}
           onChange={(e) => setMethod(e.target.value)}
         >
-          <option value="bkash">bKash · 017••••5678 (verified)</option>
-          <option value="nagad">Nagad · add number in profile</option>
-          <option value="bank">Bank · DBBL ••••2231</option>
+          {live ? (
+            <>
+              <option value="bkash">bKash</option>
+              <option value="nagad">Nagad</option>
+              <option value="rocket">Rocket</option>
+              <option value="bank">Bank</option>
+            </>
+          ) : (
+            <>
+              <option value="bkash">bKash · 017••••5678 (verified)</option>
+              <option value="nagad">Nagad · add number in profile</option>
+              <option value="bank">Bank · DBBL ••••2231</option>
+            </>
+          )}
         </select>
       </Field>
-      <Button type="submit" variant="accent" className="w-full">
+      {live && (
+        <>
+          <Field
+            label={method === "bank" ? "Bank, branch and account number" : "Mobile number"}
+            required
+            htmlFor="po-acc"
+          >
+            <input
+              id="po-acc"
+              className="input"
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
+              placeholder={method === "bank" ? "" : "01XXXXXXXXX"}
+            />
+          </Field>
+          {method === "bank" && (
+            <Field label="Account name" htmlFor="po-an">
+              <input
+                id="po-an"
+                className="input"
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+              />
+            </Field>
+          )}
+        </>
+      )}
+      <Button type="submit" variant="accent" className="w-full" disabled={busy}>
         Request payout
       </Button>
     </form>

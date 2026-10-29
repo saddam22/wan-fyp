@@ -1,15 +1,41 @@
 import { fixtures } from "@edukhata/contracts";
-import { RefundsTable } from "@/components/dash/finance";
+import { ApiProblem } from "@/components/dash/ApiProblem";
+import {
+  LiveRefundsTable,
+  RefundsTable,
+  type CashAccount,
+  type LiveRefund,
+} from "@/components/dash/finance";
 import { PageHeader } from "@/components/ui";
+import { apiFetch } from "@/lib/api";
+import { authMode } from "@/lib/auth-mode";
 
-export default function AccountantRefunds() {
+export default async function AccountantRefunds() {
+  const header = (
+    <PageHeader
+      title="Refunds"
+      sub="Refunds decided by admins in disputes or cancellations. A second person approves; record each transfer when sent."
+    />
+  );
+  if (authMode() !== "wan")
+    return (
+      <>
+        {header}
+        <RefundsTable disputes={fixtures.disputes} />
+      </>
+    );
+  const [res, acc] = await Promise.all([
+    apiFetch("/accountant/refunds"),
+    apiFetch("/accountant/payment-accounts"),
+  ]);
+  if (!res.ok || !acc.ok) return <ApiProblem status={res.ok ? acc.status : res.status} />;
   return (
     <>
-      <PageHeader
-        title="Refunds"
-        sub="Refunds decided by admins in disputes or cancellations. Record each transfer when sent."
+      {header}
+      <LiveRefundsTable
+        refunds={(await res.json()) as LiveRefund[]}
+        accounts={(await acc.json()) as CashAccount[]}
       />
-      <RefundsTable disputes={fixtures.disputes} />
     </>
   );
 }

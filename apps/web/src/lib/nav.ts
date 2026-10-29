@@ -6,6 +6,8 @@ export interface NavLink {
   href: string;
   icon: string;
   badge?: number;
+  /** Only with the real backend (hidden in the demo preview). */
+  liveOnly?: boolean;
   /** Shown only to super admins (pages also enforce this). */
   superOnly?: boolean;
 }
@@ -172,6 +174,18 @@ export const NAV: Record<Area, NavGroup[]> = {
       title: "Books",
       links: [
         { label: "Ledger", href: "/accountant/ledger", icon: "BookText" },
+        {
+          label: "Reconciliation",
+          href: "/accountant/reconciliation",
+          icon: "Scale",
+          liveOnly: true,
+        },
+        {
+          label: "Receiving Accounts",
+          href: "/accountant/accounts",
+          icon: "CreditCard",
+          liveOnly: true,
+        },
         { label: "Commission", href: "/accountant/commission", icon: "Percent" },
         { label: "Reports", href: "/accountant/reports", icon: "ChartColumn" },
         { label: "Invoices & Export", href: "/accountant/invoices", icon: "FileDown" },

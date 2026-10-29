@@ -216,12 +216,15 @@ export interface Payout {
   mentorId: string;
   mentorName: string;
   amount: Money;
-  method: "bkash" | "nagad" | "bank";
+  method: "bkash" | "nagad" | "rocket" | "bank";
   account: string;
+  accountName?: string;
   status: PayoutStatus;
   requestedAt: string;
   decidedAt?: string;
   reference?: string;
+  /** Why it was rejected (shown to the mentor). */
+  note?: string;
 }
 
 export interface LedgerEntry {

@@ -68,4 +68,21 @@ Known gaps: Web Push needs VAPID keys; no TURN; single-instance realtime and fil
 
 Known gaps: payments aren't connected yet (Phase 5). An order stays `awaiting_payment` until then, and refunds from dispute decisions are recorded but not paid out. There are no per-user rate limits on order creation beyond the global limit.
 
+## Phase 5 — payments and money (implemented and tested)
+
+ICTSpark's gaps S1–S4 are closed in EduKhata (ICTSpark itself is unchanged).
+
+| Control                  | Implementation                                                                                                                                                            | Test                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| Who may pay (S1)         | Sign-in; student, or a guardian with "pay on behalf"; others 404                                                                                                          | payments.test              |
+| Duplicate TrxID (S2)     | Unique index on (method, normalised TrxID) — concurrent submissions can't both win; one live payment per order/revision                                                   | payments.test (concurrent) |
+| Invoices (S3)            | Behind sign-in and the same relation check; only approved/refunded payments                                                                                               | money.test                 |
+| Verification (S4)        | Accountant role; nobody verifies their own payment or one for their own order; reject needs a reason; one transaction for payment, ledger and order                       | payments.test              |
+| Money out: maker-checker | Refund approver ≠ requester; payout approver ≠ mentor; payout sender ≠ approver; references unique                                                                        | money.test, e2e-wan        |
+| Ledger integrity         | Every transaction balances (deferred trigger), entries immutable, idempotency keys; payout amounts reserved under a per-mentor lock; refunds capped at what is refundable | ledger.test, money.test    |
+| Proof files              | Private storage, signed upload, magic bytes; served `nosniff`, `sandbox` CSP, `no-store`; only verifiers and the payer                                                    | payments.test              |
+| Abuse                    | Submissions rate-limited per session; all attempts kept                                                                                                                   | not tested yet             |
+
+Known gaps: the fee for sending a payout/refund isn't recorded (Q7); no statement import; the hub's registration limit (10 per 15 min per address) is fine for people but means test suites must reuse accounts.
+
 ## Planned controls (Module 17) — tracked in FEATURE_TRACEABILITY_MATRIX.md M17-*

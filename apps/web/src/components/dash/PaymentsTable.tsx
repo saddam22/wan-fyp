@@ -24,10 +24,13 @@ export function PaymentsTable({
   payments,
   payBase,
   showPayer,
+  liveBase,
 }: {
   payments: Payment[];
   payBase?: string;
   showPayer?: boolean;
+  /** Live mode: the area ("/student", "/guardian", "/accountant") for pay and invoice links. */
+  liveBase?: string;
 }) {
   const { lang } = useT();
   const toast = useToast();
@@ -91,7 +94,23 @@ export function PaymentsTable({
       key: "act",
       header: "",
       cell: (p) =>
-        payBase && (p.status === "pending" || p.status === "rejected") ? (
+        liveBase &&
+        liveBase !== "/accountant" &&
+        (p.status === "pending" || p.status === "rejected") ? (
+          <Link
+            href={`${liveBase}/orders/${p.orderId}/pay`}
+            className="text-xs font-semibold text-[var(--color-accent)] hover:underline"
+          >
+            {p.status === "rejected" ? "Resubmit" : "Pay now"}
+          </Link>
+        ) : liveBase && (p.status === "approved" || p.status === "refunded") ? (
+          <Link
+            href={`${liveBase}/invoices/${p.id}`}
+            className="flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink"
+          >
+            <FileDown size={14} /> Invoice
+          </Link>
+        ) : payBase && (p.status === "pending" || p.status === "rejected") ? (
           <Link
             href={`${payBase}/${p.id}/pay`}
             className="text-xs font-semibold text-[var(--color-accent)] hover:underline"

@@ -10,13 +10,13 @@ Columns FE / API / DB / Tests are filled as each feature is built. Acceptance cr
 
 | Status | Count |
 |---|---|
-| Missing | 126 |
-| Existing and verified | 81 |
-| Requires extension | 47 |
-| Existing but incomplete | 36 |
+| Existing and verified | 116 |
+| Missing | 106 |
+| Existing but incomplete | 41 |
+| Requires extension | 29 |
 | Requires integration | 9 |
-| Requires manual verification | 6 |
 | Available through existing API | 4 |
+| Requires manual verification | 4 |
 | **Total** | **309** |
 
 Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, notifications, guardian links, referrals, chat, calls, ad slots, catalog, orders, matching, delivery, revisions, disputes and reviews are implemented and tested (API/DB/Tests columns); everything else is still demo data — a screen alone is not a finished feature.
@@ -89,12 +89,12 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M03-08 | My Orders (all/pending/processing/completed/cancelled) | Existing and verified | — | student | /student/orders | GET /orders?as=student | orders | orders.test, e2e-wan |
 | M03-09 | Delivery countdown | Existing and verified | — | student | OrderDetail Countdown | order deadline + reminder sweep | orders.deadline_reminded_at | delivery.test |
 | M03-10 | Work preview (watermarked) | Existing and verified | — | student | /student/orders/[id] | preview files watermarked by sharp | order_files | delivery.test |
-| M03-11 | Final file download (after payment + approval rules) | Existing but incomplete | — | student | /student/orders/[id] (locked until approval) | finals locked until approval (payment rules in Phase 5) | order_files | delivery.test |
+| M03-11 | Final file download (after payment + approval rules) | Existing and verified | — | student | /student/orders/[id] (locked until approval) | finals unlock after approval of a paid order | order_files | delivery.test, e2e-wan |
 | M03-12 | Approve work | Existing and verified | — | student | OrderDetail approve modal | POST /orders/:id/approve | orders | delivery.test |
 | M03-13 | Request revision | Existing and verified | — | student | OrderDetail revision modal | POST /orders/:id/revisions | order_revisions | delivery.test |
 | M03-14 | Mentor rating + review | Existing and verified | ictspark review pattern | student | OrderDetail review modal | POST /orders/:id/review, moderation | reviews | orderchat.test |
-| M03-15 | Payment history | Requires extension | ictspark GET /payments/my | student | /student/payments | — | — | — |
-| M03-16 | Invoices (PDF) | Requires extension | ictspark invoice.service (pdfkit) | student | /student/invoices | — | — | — |
+| M03-15 | Payment history | Existing and verified | ictspark GET /payments/my | student | /student/payments | GET /orders/:id/payment, POST /payments/:id/submit, GET /me/payments | payments | payments.test, e2e-wan |
+| M03-16 | Invoices (PDF) | Existing but incomplete | ictspark invoice.service (pdfkit) | student | /student/invoices | GET /payments/:id/invoice (printable page; browser saves PDF) | payments | money.test, e2e-wan |
 | M03-17 | Notifications | Existing and verified | social-module notifications / ictspark Notification | student | /student/notifications | /me/notifications*, preferences | notifications, notification_preferences | notifications.test, e2e-wan |
 | M03-18 | Chat | Requires integration | chat-messaging | student | /student/messages | — | — | — |
 | M03-19 | Support tickets | Requires extension | ictspark support.controller | student | /student/support | — | — | — |
@@ -106,7 +106,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
-| M04-01 | Overview (earnings, active orders, rating, profile completion) | Missing | — | mentor | /mentor | — | — | — |
+| M04-01 | Overview (earnings, active orders, rating, profile completion) | Existing and verified | — | mentor | /mentor | GET /mentor/earnings (pending/available) | ledger_entries | ledger.test, e2e-wan |
 | M04-02 | Profile management | Existing but incomplete | — | mentor | /mentor/profile | GET/PUT /mentor/profile (headline, bio, education, institution) | mentor_profiles | catalog.test, e2e-wan |
 | M04-03 | Education & qualifications | Missing | — | mentor | — | — | — | — |
 | M04-04 | Skills & subjects | Existing and verified | — | mentor | /mentor/profile | PUT /mentor/profile subjects/workTypes/levels | mentor_profiles | catalog.test, e2e-wan |
@@ -119,8 +119,8 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M04-11 | Deadlines + delivery countdown | Existing and verified | — | mentor | /mentor/orders/[id] | deadline reminders | orders | delivery.test |
 | M04-12 | Work submission | Existing and verified | — | mentor | OrderDetail deliver modal | preview/final upload + POST /mentor/orders/:id/deliver | order_files | delivery.test |
 | M04-13 | Revision handling | Existing and verified | — | mentor | OrderDetail (mentor) | revision_requested → deliver next round | order_revisions | delivery.test |
-| M04-14 | Earnings: pending / available | Missing | — | mentor | /mentor/earnings | — | — | — |
-| M04-15 | Payout requests | Requires extension | ictspark AgentPayout / referral payout pattern | mentor | /mentor/payouts | — | — | — |
+| M04-14 | Earnings: pending / available | Existing and verified | — | mentor | /mentor/earnings | GET /mentor/earnings (pending/available) | ledger_entries | ledger.test, e2e-wan |
+| M04-15 | Payout requests | Existing and verified | ictspark AgentPayout / referral payout pattern | mentor | /mentor/payouts | GET/POST /mentor/payouts | payouts | money.test, e2e-wan |
 | M04-16 | Reviews & ratings | Existing but incomplete | — | mentor | /mentor/reviews | GET /mentors/:id/reviews (mentor dashboard page still demo) | reviews | orderchat.test |
 | M04-17 | Mentor ranking | Missing | — | mentor | /mentor/badges | — | — | — |
 | M04-18 | Profile completion score | Missing | wan-identity-hub has a hub-level score only | mentor | /mentor overview | — | — | — |
@@ -171,7 +171,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M06-13 | Admin manual assignment | Existing and verified | — | admin | /admin/orders/[id] | POST /admin/orders/:id/assign, candidates | orders | matching.test |
 | M06-14 | Assignment history | Existing and verified | — | admin | — | GET /admin/orders/:id/offers + events | order_offers, order_events | matching.test |
 | M06-15 | Reassignment | Existing and verified | — | admin | /admin/orders/[id] | assign over a mentor / unassign / release | orders | matching.test, orderchat.test |
-| M06-16 | Cancellation handling | Existing but incomplete | — | student | /admin/orders/[id] cancel & refund | cancel before assignment / staff; refunds in Phase 5 | orders | orders.test |
+| M06-16 | Cancellation handling | Existing and verified | — | student | /admin/orders/[id] cancel & refund | cancel + refund decision (second-person approval) | orders, refunds | orders.test, money.test |
 | M06-17 | Matching notifications | Existing and verified | social-module | system | — | order.offer, order.assigned, order.needs_assignment | notifications | matching.test |
 | M06-18 | Direct order to a chosen mentor (bypass matching) | Existing but incomplete | — | student | /order/new?mentor= | exclusive first offer to the chosen mentor, then matching | orders.preferred_mentor_id | matching.test |
 
@@ -179,27 +179,27 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
-| M07-01 | Payment method selection | Requires extension | ictspark GET /payments/methods | student | ManualPayment | — | — | — |
-| M07-02 | Manual bank / mobile-wallet payment instructions | Requires extension | ictspark sendmoney.controller | student | ManualPayment | — | — | — |
-| M07-03 | Transaction ID submission | Requires extension | ictspark POST /payments/:id/manual | student | ManualPayment (validation, Bengali digits) | — | — | — |
-| M07-04 | Payment proof upload | Missing | ictspark has no proof upload | student | ManualPayment | — | — | — |
-| M07-05 | Duplicate TrxID protection (DB unique constraint) | Requires extension | ictspark app-level check only (race-prone) | system | — | — | — | — |
-| M07-06 | Verification by Accountant (maker-checker) | Requires extension | ictspark admin verify; central-ad-platform maker-checker pattern | accountant | /accountant/payments | — | — | — |
-| M07-07 | Statuses pending/approved/rejected/refunded | Requires extension | ictspark PAYMENT_STATUS | system | PaymentStatusBadge | — | — | — |
-| M07-08 | Payment history | Requires extension | ictspark | student | /student/payments | — | — | — |
-| M07-09 | Gateway (bKash/Nagad/SSLCommerz) where contracts exist | Requires manual verification | ictspark providers (credentials not available) | ops | — | — | — | — |
-| M07-10 | Payment configuration (accounts, numbers) | Requires extension | ictspark PlatformSettings | super_admin | /admin/settings | — | — | — |
-| M07-11 | Commission calculation (configurable, default 20/80) | Missing | — | system | splitCommission (contracts) + UI | — | — | — |
-| M07-12 | Mentor earnings | Missing | — | mentor | /mentor/earnings, /accountant/earnings | — | — | — |
-| M07-13 | Double-entry financial ledger | Requires extension | central-ad-platform ledger.ts pattern | accountant | /accountant/ledger | — | — | — |
-| M07-14 | Payout requests | Missing | — | mentor | /mentor/payouts | — | — | — |
-| M07-15 | Payout approval (no duplicate payout) | Missing | — | accountant | /accountant/payouts | — | — | — |
-| M07-16 | Refunds | Missing | — | accountant | /accountant/refunds | — | — | — |
-| M07-17 | Reconciliation job | Requires extension | central-ad-platform jobs/reconcile.ts pattern | accountant | /accountant overview (checks list) | — | — | — |
-| M07-18 | Invoice generation | Requires extension | ictspark invoice.service | student | /accountant/invoices | — | — | — |
-| M07-19 | Financial audit history | Requires extension | central-ad-platform audit chain pattern | accountant | /accountant/audit | — | — | — |
-| M07-20 | Fee / tax / VAT / adjustment policy | Requires manual verification | owner decision | owner | — | — | — | — |
-| M07-21 | Hold-until-approval of mentor share ('money hold') | Requires manual verification | legal/provider check — no escrow verified | owner | — | — | — | — |
+| M07-01 | Payment method selection | Existing and verified | ictspark GET /payments/methods | student | ManualPayment | GET /payments/accounts | payment_accounts | payments.test, e2e-wan |
+| M07-02 | Manual bank / mobile-wallet payment instructions | Existing and verified | ictspark sendmoney.controller | student | ManualPayment | account number, instructions, order code as reference | payment_accounts | e2e-wan |
+| M07-03 | Transaction ID submission | Existing and verified | ictspark POST /payments/:id/manual | student | ManualPayment (validation, Bengali digits) | POST /payments/:id/submit (ICTSpark rules, per-session limit) | payments, payment_attempts | payments.test, e2e-wan |
+| M07-04 | Payment proof upload | Existing and verified | ictspark has no proof upload | student | ManualPayment | POST /payments/:id/proof (private, magic bytes, EXIF removed) | payments.proof_key | payments.test |
+| M07-05 | Duplicate TrxID protection (DB unique constraint) | Existing and verified | ictspark app-level check only (race-prone) | system | — | unique index (method, TrxID) | payments_trx_unique | payments.test (concurrent) |
+| M07-06 | Verification by Accountant (maker-checker) | Existing and verified | ictspark admin verify; central-ad-platform maker-checker pattern | accountant | /accountant/payments | POST /accountant/payments/:id/decision (not own payment; payouts/refunds two people) | payments | payments.test, money.test, e2e-wan |
+| M07-07 | Statuses pending/approved/rejected/refunded | Existing and verified | ictspark PAYMENT_STATUS | system | PaymentStatusBadge | pending/submitted/approved/rejected/refunded/cancelled | payments.status | payments.test, money.test |
+| M07-08 | Payment history | Existing and verified | ictspark | student | /student/payments | GET /me/payments | payments | e2e-wan |
+| M07-09 | Gateway (bKash/Nagad/SSLCommerz) where contracts exist | Requires manual verification | ictspark providers (credentials not available) | ops | — | not connected — no merchant credentials | — | — |
+| M07-10 | Payment configuration (accounts, numbers) | Existing and verified | ictspark PlatformSettings | super_admin | /admin/settings | /accountant/payment-accounts (audited) | payment_accounts | payments.test, e2e-wan |
+| M07-11 | Commission calculation (configurable, default 20/80) | Existing and verified | — | system | splitCommission (contracts) + UI | commission_rate frozen per order; floor mentor share | orders.commission_rate, ledger | ledger.test |
+| M07-12 | Mentor earnings | Existing and verified | — | mentor | /mentor/earnings, /accountant/earnings | pending at approval, available at closure | ledger_entries | ledger.test, e2e-wan |
+| M07-13 | Double-entry financial ledger | Existing and verified | central-ad-platform ledger.ts pattern | accountant | /accountant/ledger | post() with balance trigger, immutable, idempotent | ledger_transactions, ledger_entries | ledger.test |
+| M07-14 | Payout requests | Existing and verified | — | mentor | /mentor/payouts | POST /mentor/payouts (min, ≤ available, one open) | payouts | money.test, e2e-wan |
+| M07-15 | Payout approval (no duplicate payout) | Existing and verified | — | accountant | /accountant/payouts | approve → paid by another person; unique reference | payouts | money.test, e2e-wan |
+| M07-16 | Refunds | Existing and verified | — | accountant | /accountant/refunds | createRefundTx; approve (second person) → paid | refunds | money.test |
+| M07-17 | Reconciliation job | Existing but incomplete | central-ad-platform jobs/reconcile.ts pattern | accountant | /accountant overview (checks list) | per-account totals + manual tick-off (no statement import) | payments.reconciled_at | money.test |
+| M07-18 | Invoice generation | Existing and verified | ictspark invoice.service | student | /accountant/invoices | GET /payments/:id/invoice | payments | money.test, e2e-wan |
+| M07-19 | Financial audit history | Existing but incomplete | central-ad-platform audit chain pattern | accountant | /accountant/audit | audit_log for every money action + immutable ledger (no hash chain) | audit_log | money.test |
+| M07-20 | Fee / tax / VAT / adjustment policy | Existing but incomplete | owner decision | owner | — | no VAT (Q19); payer bears send fees; payout fees not modelled (Q7) | — | — |
+| M07-21 | Hold-until-approval of mentor share ('money hold') | Existing but incomplete | legal/provider check — no escrow verified | owner | — | escrow:order account until approval (legal check Q5 open) | ledger_entries | ledger.test |
 
 ## M08 — Revision, approval & dispute
 
@@ -208,14 +208,14 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M08-01 | Work review | Existing and verified | — | student | OrderDetail | previews + delivery | order_files | delivery.test |
 | M08-02 | Approve / reject | Existing and verified | — | student | OrderDetail | approve or revision/dispute | orders | delivery.test |
 | M08-03 | Configurable free revisions (default 2–3) | Existing and verified | — | admin | /admin/settings | free_revisions frozen per order | orders.free_revisions | delivery.test |
-| M08-04 | Paid extra revisions | Existing but incomplete | — | student | OrderDetail revision modal | priced and held until payment (Phase 5 hook) | order_revisions | delivery.test |
+| M08-04 | Paid extra revisions | Existing and verified | — | student | OrderDetail revision modal | fee paid → revision activated | order_revisions, payments | payments.test |
 | M08-05 | Revision instructions | Existing and verified | — | student | OrderDetail revision modal | POST /orders/:id/revisions | order_revisions | delivery.test |
 | M08-06 | Revised file submission | Existing and verified | — | mentor | OrderDetail deliver modal | new round of files | order_files.round | delivery.test |
 | M08-07 | Revision history | Existing and verified | — | student | OrderDetail revisions card | order DTO revisions | order_revisions | delivery.test |
 | M08-08 | Auto-approve after inactivity window | Missing | — | system | /admin/settings | — | — | — |
 | M08-09 | Disputes | Existing and verified | — | student | OrderDetail dispute modal | POST /orders/:id/disputes (one open) | disputes | delivery.test |
 | M08-10 | Admin dispute resolution | Existing and verified | — | admin | /admin/disputes | POST /admin/disputes/:id/resolve | disputes | delivery.test |
-| M08-11 | Refund decisions | Existing but incomplete | — | admin | /admin/disputes | recorded on the dispute; payout in Phase 5 | disputes.refund_minor | delivery.test |
+| M08-11 | Refund decisions | Existing and verified | — | admin | /admin/disputes | dispute refund → refunds table → paid | refunds | money.test |
 | M08-12 | Order closure | Existing and verified | — | system | — | auto-close + admin close | orders | delivery.test |
 
 ## M09 — Chat, notifications & communication
@@ -245,7 +245,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M10-02 | Student linking via one-time code | Existing and verified | ictspark parent.controller linkChild | guardian | /guardian/children, /student/profile | /me/guardian-code, /guardian/children | guardian_link_codes, guardian_links | guardians.test, e2e-wan |
 | M10-03 | Progress overview | Requires extension | ictspark | guardian | /guardian | — | — | — |
 | M10-04 | Order history | Existing and verified | — | guardian | /guardian/orders | GET /orders?as=guardian (view orders permission) | guardian_links, orders | orders.test |
-| M10-05 | Payment history (+ pay on behalf) | Requires extension | ictspark parent payments | guardian | /guardian/payments | — | — | — |
+| M10-05 | Payment history (+ pay on behalf) | Existing and verified | ictspark parent payments | guardian | /guardian/payments | GET /me/payments (view payments permission); pay on behalf | payments, guardian_links | payments.test |
 | M10-06 | Assignment status | Existing and verified | — | guardian | /guardian/orders/[id] | order detail for guardians | orders | orders.test |
 | M10-07 | Notifications | Existing and verified | social-module | guardian | /guardian/notifications | guardian.linked/unlinked (mandatory) | notifications | guardians.test |
 | M10-08 | Guardian permissions & student privacy controls | Existing and verified | — | student | /guardian/privacy | PUT/DELETE /me/guardians/:id | guardian_links | guardians.test, e2e-wan |
@@ -263,9 +263,9 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M11-07 | Subject / category management | Existing but incomplete | — | admin | /admin/catalog | admin catalog API; price list page live | subjects, categories, price_list | catalog.test |
 | M11-08 | Assignment moderation | Missing | — | admin | /admin/moderation | — | — | — |
 | M11-09 | Order management + manual assignment | Existing and verified | — | admin | /admin/orders | staff order list/detail, assign/unassign/cancel/close | orders | matching.test, delivery.test |
-| M11-10 | Payment verification (delegable to accountant) | Requires extension | ictspark | admin | /admin/payments | — | — | — |
-| M11-11 | Payout approval | Missing | — | admin | /admin/payouts | — | — | — |
-| M11-12 | Refund management | Missing | — | admin | /admin/refunds | — | — | — |
+| M11-10 | Payment verification (delegable to accountant) | Existing and verified | ictspark | admin | /admin/payments | accountant area (super admin too) | payments | payments.test |
+| M11-11 | Payout approval | Existing and verified | — | admin | /admin/payouts | accountant area | payouts | money.test |
+| M11-12 | Refund management | Existing and verified | — | admin | /admin/refunds | accountant area | refunds | money.test |
 | M11-13 | Dispute management | Existing and verified | — | admin | /admin/disputes | /admin/disputes | disputes | delivery.test |
 | M11-14 | Coupons & discounts | Missing | — | admin | /admin/coupons | — | — | — |
 | M11-15 | Referral configuration | Existing but incomplete | ictspark | admin | /admin/referrals | GET /admin/referrals (attributions; reward settings in Phase 5) | referrals | referrals.test |
@@ -286,16 +286,16 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
-| M12-01 | Overview | Missing | — | accountant | /accountant | — | — | — |
-| M12-02 | Payment verification | Requires extension | ictspark | accountant | /accountant/payments | — | — | — |
-| M12-03 | Mentor earnings verification | Missing | — | accountant | /accountant/earnings | — | — | — |
-| M12-04 | Payout review | Missing | — | accountant | /accountant/payouts | — | — | — |
-| M12-05 | Commission reports | Missing | — | accountant | /accountant/commission | — | — | — |
-| M12-06 | Refund records | Missing | — | accountant | /accountant/refunds | — | — | — |
-| M12-07 | Transaction ledger | Missing | — | accountant | /accountant/ledger | — | — | — |
+| M12-01 | Overview | Existing and verified | — | accountant | /accountant | GET /accountant/balances + queues | ledger_entries | ledger.test |
+| M12-02 | Payment verification | Existing and verified | ictspark | accountant | /accountant/payments | /accountant/payments | payments | payments.test, e2e-wan |
+| M12-03 | Mentor earnings verification | Existing but incomplete | — | accountant | /accountant/earnings | balances by mentor account in the ledger | ledger_entries | ledger.test |
+| M12-04 | Payout review | Existing and verified | — | accountant | /accountant/payouts | /accountant/payouts | payouts | money.test, e2e-wan |
+| M12-05 | Commission reports | Existing but incomplete | — | accountant | /accountant/commission | commission balance (no monthly report yet) | ledger_entries | ledger.test |
+| M12-06 | Refund records | Existing and verified | — | accountant | /accountant/refunds | /accountant/refunds | refunds | money.test |
+| M12-07 | Transaction ledger | Existing and verified | — | accountant | /accountant/ledger | /accountant/ledger | ledger_entries | ledger.test |
 | M12-08 | Daily / monthly reports | Missing | — | accountant | /accountant/reports | — | — | — |
-| M12-09 | Invoice / CSV export | Missing | — | accountant | /accountant/invoices | — | — | — |
-| M12-10 | Financial audit history | Missing | — | accountant | /accountant/audit | — | — | — |
+| M12-09 | Invoice / CSV export | Existing but incomplete | — | accountant | /accountant/invoices | invoices (no CSV yet) | payments | money.test |
+| M12-10 | Financial audit history | Existing but incomplete | — | accountant | /accountant/audit | audit_log + immutable ledger | audit_log | money.test |
 
 ## M13 — Supporter dashboard
 
@@ -352,7 +352,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
-| M16-01 | Schema + migrations | Existing but incomplete | — | system | — | migrations 001–009 + module migrations | schema_migrations | all API tests (fresh schema) |
+| M16-01 | Schema + migrations | Existing but incomplete | — | system | — | migrations 001–012 + module migrations | schema_migrations | all API tests (fresh schema) |
 | M16-02 | Users ↔ marketplace roles ↔ permissions | Existing and verified | — | system | — | /me, /admin/users | users, user_roles | api.test |
 | M16-03 | Assignment / service / portfolio models | Existing but incomplete | — | system | — | orders, mentor profiles (no per-mentor services/portfolio) | mentor_profiles | catalog.test |
 | M16-04 | Orders + status history | Existing and verified | — | system | — | orders + order_events | 006_orders.sql | orders.test |
@@ -395,11 +395,11 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
 | M18-01 | Unit tests | Missing | — | dev | vitest (contracts, i18n) | — | — | — |
-| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 61 tests |
+| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 76 tests |
 | M18-03 | Component tests | Missing | — | dev | — | — | — | — |
-| M18-04 | E2E workflow tests (Playwright) | Missing | — | dev | Playwright e2e/ | — | — | — |
+| M18-04 | E2E workflow tests (Playwright) | Existing and verified | — | dev | Playwright e2e/ | full order journey with payment and payout | — | e2e-wan |
 | M18-05 | Role/permission tests | Existing but incomplete | — | dev | e2e/access.spec.ts (UI level) | API + UI + real sign-in | — | api.test, access.spec, e2e-wan |
-| M18-06 | Payment workflow tests | Missing | — | dev | — | — | — | — |
+| M18-06 | Payment workflow tests | Existing and verified | — | dev | — | payments, ledger, refunds, payouts | — | payments/ledger/money tests, e2e-wan |
 | M18-07 | Matching concurrency tests | Existing and verified | — | dev | — | simultaneous accepts | — | matching.test |
 | M18-08 | Revision workflow tests | Existing and verified | — | dev | — | free/paid revisions | — | delivery.test |
 | M18-09 | Responsive UI tests | Missing | — | dev | e2e/pages.spec.ts | — | — | — |

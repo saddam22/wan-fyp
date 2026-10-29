@@ -4,7 +4,7 @@ export const en = {
   demo: {
     banner: "Demo preview — sample data only, no backend connected. Actions are not saved.",
     bannerLive:
-      "Preview — orders, payments and mentors are still sample data. WAN sign-in, notifications, guardian links, referrals and support chat are live.",
+      "Staging preview — orders, payments, matching, chat and the ledger are live. Some report and content pages still show sample data.",
     notSaved: "Demo only — not saved. This action is wired to the backend in a later phase.",
   },
   header: {

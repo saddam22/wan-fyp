@@ -62,6 +62,24 @@ Fastify 5 + PostgreSQL, reached by browsers only through the web origin (`/api/*
 
 Internal hooks for Phase 5: `matching.startMatching(orderId)` (payment approved) and `delivery.activatePaidRevision(orderId, n)`. Background sweep every 30 s: offer expiry and next wave, auto-close, deadline reminders.
 
+### Added in Phase 5 (payments and money)
+
+| Method & path                                                                                       | Who                                                             | Purpose                                                                                 |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `GET /payments/accounts`                                                                            | signed in                                                       | enabled receiving accounts                                                              |
+| `GET`/`POST /accountant/payment-accounts` · `PUT …/{id}`                                            | accountant, super admin                                         | manage receiving accounts (audited)                                                     |
+| `GET /orders/{id}/payment`                                                                          | student, guardian with "view payments" / "pay on behalf", staff | the payment due now (created on first request) and earlier ones                         |
+| `POST /payments/{id}/proof` · `POST /payments/{id}/submit`                                          | student, guardian with "pay on behalf"                          | optional proof upload; submit sender + TrxID (rate-limited per session)                 |
+| `GET /me/payments`                                                                                  | signed in                                                       | own payments, children's (by permission), paid by me                                    |
+| `GET /accountant/payments` · `GET /payments/{id}/proof` · `POST /accountant/payments/{id}/decision` | accountant, super admin (proof also to the payer)               | verification queue; approve (ledger + order in one transaction) or reject with a reason |
+| `GET /mentor/earnings`                                                                              | mentor                                                          | pending and available balances, ledger lines                                            |
+| `GET`/`POST /mentor/payouts`                                                                        | mentor                                                          | history; request (≥ minimum, ≤ available, one open)                                     |
+| `GET /accountant/payouts` · `POST …/{id}/approve` · `…/reject` · `…/paid`                           | accountant, super admin; never the mentor; sender ≠ approver    | maker-checker payouts                                                                   |
+| `GET /accountant/refunds` · `POST …/{id}/approve` · `…/paid`                                        | accountant, super admin; approver ≠ requester                   | refunds from cancellations and disputes                                                 |
+| `GET /accountant/ledger` · `GET /accountant/balances`                                               | accountant, super admin                                         | journal lines; balances by kind and the trial balance                                   |
+| `GET /accountant/reconciliation` · `POST /accountant/payments/{id}/reconcile`                       | accountant, super admin                                         | per-account totals; tick off approved payments                                          |
+| `GET /payments/{id}/invoice`                                                                        | student, payer, permitted guardian, staff                       | invoice of an approved or refunded payment                                              |
+
 Validation: Zod. Rate limits: 600/min per client globally, 30 per 5 min on `/auth/login` and `/auth/callback`.
 
 ## Existing APIs EduKhata calls
