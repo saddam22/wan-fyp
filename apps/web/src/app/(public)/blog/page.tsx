@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { fixtures, formatDate } from "@edukhata/contracts";
+import { formatDate } from "@edukhata/contracts";
+import { getPosts } from "@/lib/blog";
 import { AdSlot, BlogCover } from "@/components/public/home";
 import { PageHero } from "@/components/public/kit";
 import { getT } from "@/lib/i18n/server";
@@ -9,7 +10,8 @@ export const metadata: Metadata = { title: "Blog & Study Tips" };
 
 export default async function BlogPage() {
   const { t, lang } = await getT();
-  const [first, ...rest] = fixtures.blogPosts;
+  const posts = await getPosts();
+  const [first, ...rest] = posts;
   return (
     <>
       <PageHero
@@ -32,6 +34,9 @@ export default async function BlogPage() {
               <p className="text-muted">{first.excerpt}</p>
             </div>
           </Link>
+        )}
+        {posts.length === 0 && (
+          <p className="py-10 text-center text-muted">No articles yet — check back soon.</p>
         )}
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rest.map((p) => (

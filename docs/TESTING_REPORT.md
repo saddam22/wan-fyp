@@ -1,5 +1,15 @@
 # Testing Report
 
+## Phase 6 — trust and growth (2026-10-29)
+
+| Suite                             | Result                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API integration (real PostgreSQL) | **85 / 85** (+9): verification 3 (documents, EXIF removed, privacy, independent reviewer, revocation, ranking and "verified only"), skill tests 2 (no answers sent, grading, retake period, late answers), promotions 1 (ledger, stacking, paid labels, admin stop), coupons 2 (cap, minimum, per-person, concurrent last use, release, minimum price), blog 1         |
+| Real end-to-end (`pnpm e2e:wan`)  | **7 / 7**: new — mentor uploads NID and certificate → admin opens the document and approves → "Verified mentor" badge on the dashboard and the public directory; admin creates a coupon → the student applies it in the wizard and the order costs ৳450 instead of ৳500; mentor writes a post → admin publishes → the public blog renders its heading and list as text |
+| Demo UI suite                     | 401 pass                                                                                                                                                                                                                                                                                                                                                               |
+
+Bugs found and fixed: the ledger's account check had no `revenue:promotions`; "already being reviewed" was hidden behind document checks; the order offer list could show orders left by earlier e2e runs (the journey now accepts its own order by code); the order page called every assigned mentor "Verified mentor" (now only in the demo).
+
 ## Phase 5 — payments and money (2026-10-29)
 
 | Suite                             | Result                                                                                                                                                                                                                                                                                                                                      |

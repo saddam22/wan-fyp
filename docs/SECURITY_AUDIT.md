@@ -85,4 +85,19 @@ ICTSpark's gaps S1–S4 are closed in EduKhata (ICTSpark itself is unchanged).
 
 Known gaps: the fee for sending a payout/refund isn't recorded (Q7); no statement import; the hub's registration limit (10 per 15 min per address) is fine for people but means test suites must reuse accounts.
 
+## Phase 6 — trust and growth (implemented and tested)
+
+| Control                | Implementation                                                                                                                              | Test                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Identity documents     | Private storage, signed upload, magic bytes, EXIF removed, served `sandbox` + `no-store` to reviewers and the owner; reviewer views audited | trust.test, e2e-wan                          |
+| Verification integrity | Decision by someone other than the mentor (API check + DB check), reason required to reject, revocation audited                             | trust.test                                   |
+| Paid ≠ verified        | Paid badges labelled "paid", separate featured list; organic ranking and matching ignore promotions                                         | growth.test, trust.test, contracts unit test |
+| Skill-test integrity   | Right answers never leave the server; deadline enforced on the server; retake period; attempts bound to the mentor                          | trust.test                                   |
+| Money for promotions   | Paid from the balance under the payout lock; ledger-balanced; admin stop returns unused part                                                | growth.test                                  |
+| Coupon abuse           | Limits checked under a row lock (concurrent last use: one wins), per-person limit, minimum price                                            | growth.test                                  |
+| Blog XSS               | Text is stored as text and rendered as React text nodes (no HTML)                                                                           | code review                                  |
+| Content review         | Nobody reviews their own post; others' drafts are private                                                                                   | growth.test                                  |
+
+Known gaps: document retention period is open (Q20); no malware scanning of uploads (magic-byte checks only).
+
 ## Planned controls (Module 17) — tracked in FEATURE_TRACEABILITY_MATRIX.md M17-*

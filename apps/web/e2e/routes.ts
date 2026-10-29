@@ -22,6 +22,8 @@ const LIVE_ONLY = [
   /\/invoices\/\[id\]$/,
   /\/orders\/\[id\]\/pay$/,
   /^\/accountant\/(accounts|reconciliation)$/,
+  /^\/(admin\/skill-tests|mentor\/blog)$/,
+  /^\/p\/\[slug\]$/,
 ];
 
 /** Every page route in src/app, with dynamic segments filled in. */

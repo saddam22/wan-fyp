@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-29 — Phase 6: trust and growth
+
+- Mentor verification with private documents and an independent reviewer (ICTSpark's application review), revocation, audit of document views.
+- Verified mentors rank higher; optional "verified only" matching rule.
+- Server-graded skill tests with time limit and retake period; computed badges (verified, skill, top rated, on time, 20+ orders).
+- Boosts and Pro paid from mentor earnings through the ledger, labelled as paid, separate from ranking and verification; no auto-renewal.
+- Coupons (percent/fixed, caps, limits under lock, released on cancellation) in the live order wizard.
+- Blog (mentors submit, another admin publishes) and CMS pages; live public blog and mentor directory.
+- Tests: API 85; real end-to-end 7; demo UI suite.
+
 ## 2026-10-29 — Phase 5: payments and money
 
 - Manual payments in ICTSpark's flow (bKash/Nagad/Rocket/bank, TrxID + optional proof), with ICTSpark's gaps closed: sign-in and ownership, a unique TrxID index, private proof, accountant verification in one transaction with the ledger and the order.

@@ -126,16 +126,54 @@ export function OrderWizard({ live }: { live?: WizardCatalog } = {}) {
   });
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
+  // Live: a coupon the server accepted for this draft (its quote is the source of truth).
+  const [checked, setApplied] = useState<{
+    code: string;
+    discountMinor: number;
+    draft: string;
+  } | null>(null);
+  // A changed draft needs the coupon checked again.
+  const draftKey = `${d.workType}|${d.pages}|${d.delivery}`;
+  const applied = checked?.draft === draftKey ? checked : null;
+  const [couponErr, setCouponErr] = useState("");
+  async function applyCoupon() {
+    setCouponErr("");
+    try {
+      const q = await orderApi<{ discountMinor?: number; couponCode?: string }>(
+        "/orders/quote",
+        "POST",
+        {
+          workType: d.workType,
+          pages: d.pages,
+          deliveryMethod: d.delivery,
+          couponCode: d.coupon.trim(),
+        },
+      );
+      setApplied(
+        q.couponCode
+          ? { code: q.couponCode, discountMinor: q.discountMinor ?? 0, draft: draftKey }
+          : null,
+      );
+    } catch (e) {
+      setApplied(null);
+      setCouponErr((e as Error).message);
+    }
+  }
   const price = useMemo(() => {
     // Live: the API's price list (the server computes the final price the same way).
     const perPage = live ? live.priceList[d.workType].amountMinor / 100 : PER_PAGE[d.workType];
     const base = perPage * d.pages;
     const courier = d.delivery === "courier" ? (live ? live.rules.courierFeeMinor / 100 : 120) : 0;
-    const discount =
-      !live && d.coupon.trim().toUpperCase() === "WELCOME20" ? Math.round(base * 0.2) : 0;
+    const discount = live
+      ? applied && applied.code === d.coupon.trim().toUpperCase()
+        ? applied.discountMinor / 100
+        : 0
+      : d.coupon.trim().toUpperCase() === "WELCOME20"
+        ? Math.round(base * 0.2)
+        : 0;
     const total = base + courier - discount;
     return { base, courier, discount, total, split: splitCommission(Math.round(total * 100), 0.2) };
-  }, [d.workType, d.pages, d.delivery, d.coupon, live]);
+  }, [d.workType, d.pages, d.delivery, d.coupon, live, applied]);
 
   function validate(s: number): boolean {
     const e: Record<string, string> = {};
@@ -257,6 +295,9 @@ export function OrderWizard({ live }: { live?: WizardCatalog } = {}) {
                   deliveryMethod: d.delivery,
                   ...(d.delivery === "courier" ? { deliveryAddress: d.address } : {}),
                   ...(d.mentor !== "auto" ? { preferredMentorId: d.mentor } : {}),
+                  ...(applied && applied.code === d.coupon.trim().toUpperCase()
+                    ? { couponCode: applied.code }
+                    : {}),
                 });
                 for (const f of fileObjs) await uploadOrderFile(o.id, "requirement", f);
                 toast({ tone: "success", title: `Order ${o.code} placed`, body: "Next: payment." });
@@ -622,6 +663,26 @@ export function OrderWizard({ live }: { live?: WizardCatalog } = {}) {
                       mockApi.mentor(d.mentor)?.name)}
                 </p>
               </div>
+              {live && (
+                <Field label="Coupon code" htmlFor="cp" error={couponErr}>
+                  <span className="flex gap-2">
+                    <input
+                      id="cp"
+                      className="input font-mono uppercase sm:w-48"
+                      value={d.coupon}
+                      onChange={(e) => set("coupon", e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!d.coupon.trim()}
+                      onClick={applyCoupon}
+                    >
+                      Apply
+                    </Button>
+                  </span>
+                </Field>
+              )}
               {!live && (
                 <Field label="Coupon code" htmlFor="cp" hint="Try WELCOME20 (first order)">
                   <input

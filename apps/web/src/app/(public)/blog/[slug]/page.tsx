@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fixtures, formatDate, mockApi } from "@edukhata/contracts";
+import { fixtures, formatDate } from "@edukhata/contracts";
+import { PostText } from "@/components/dash/live-trust";
+import { getPost, getPosts } from "@/lib/blog";
 import { AdSlot, BlogCover } from "@/components/public/home";
 import { Prose } from "@/components/public/kit";
 import { buttonClass, Card } from "@/components/ui";
@@ -16,7 +18,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const p = mockApi.post((await params).slug);
+  const p = await getPost((await params).slug);
   return p
     ? {
         title: p.title,
@@ -27,8 +29,9 @@ export async function generateMetadata({
 }
 
 export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
-  const p = mockApi.post((await params).slug);
+  const p = await getPost((await params).slug);
   if (!p) notFound();
+  const more = (await getPosts()).filter((x) => x.slug !== p.slug).slice(0, 6);
   const { t, lang } = await getT();
   return (
     <div className="container-x py-8">
@@ -51,11 +54,15 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
               {p.author} · {formatDate(p.at, lang)} · {p.readMinutes} min read
             </p>
             <div className="mt-6">
-              <Prose>
-                {p.body.map((para, i) => (
-                  <p key={i}>{para}</p>
-                ))}
-              </Prose>
+              {p.text !== undefined ? (
+                <PostText body={p.text} />
+              ) : (
+                <Prose>
+                  {p.body.map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </Prose>
+              )}
             </div>
             <div className="mt-8">
               <AdSlot t={t} placement="blog-end" />
@@ -75,15 +82,13 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
           <Card className="p-5">
             <p className="mb-2 font-bold">More articles</p>
             <ul className="space-y-2 text-sm">
-              {fixtures.blogPosts
-                .filter((x) => x.slug !== p.slug)
-                .map((x) => (
-                  <li key={x.slug}>
-                    <Link href={`/blog/${x.slug}`} className="text-brand-600 hover:underline">
-                      {x.title}
-                    </Link>
-                  </li>
-                ))}
+              {more.map((x) => (
+                <li key={x.slug}>
+                  <Link href={`/blog/${x.slug}`} className="text-brand-600 hover:underline">
+                    {x.title}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </Card>
         </aside>

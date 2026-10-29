@@ -63,4 +63,15 @@ Migrations run in name order, each once, in a transaction (`schema_migrations`).
 | `refunds`                               | `012_refunds_payouts.sql` | refund decisions, approval, transfer       | reference unique; status flow requested → approved → paid                                                                            |
 | `payouts`                               | `012`                     | mentor payout requests                     | `payouts_one_open` (one open per mentor); reference unique                                                                           |
 
+### Added in Phase 6 (`013_trust_growth.sql`)
+
+| Table                                                                               | Purpose                        | Key constraints                                                                                    |
+| ----------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `mentor_profiles.verified_at/by`                                                    | verified status                | set only by a reviewer                                                                             |
+| `mentor_verifications`, `verification_files`                                        | requests and private documents | one pending per mentor (partial unique); reviewer ≠ mentor (check)                                 |
+| `skill_tests`, `skill_questions`, `skill_attempts`                                  | tests, questions, attempts     | right answer within the options (check); one open attempt per test and mentor                      |
+| `mentor_promotions`                                                                 | boosts and Pro                 | ends after start; ledger link `ledger_transactions.promotion_id`; new account `revenue:promotions` |
+| `coupons`, `coupon_redemptions`; `orders.list_price_minor/discount_minor/coupon_id` | coupons and their use          | code format and unique; percent ≤ 100; one redemption per order                                    |
+| `content_posts`                                                                     | blog posts and pages           | unique (kind, slug); status list                                                                   |
+
 Module tables are created by the modules themselves on API start, so they follow upgrades of the pinned submodule. The calling tables use `text` ids without a foreign key to `users` (module design). Money tables (Phase 5) use signed integer paisa (`bigint`).

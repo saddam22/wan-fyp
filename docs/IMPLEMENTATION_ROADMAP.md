@@ -8,7 +8,7 @@
 | 3     | Chat, calling, notifications/push, ads slots, ICTSpark rule ports (referral, guardian; reviews → Phase 4)                                                              | Integration tests                                   | **Done — waiting for your review** |
 | 4     | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes, order chats, reviews                                 | E2E order journey                                   | **Done**                           |
 | 5     | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices                                                              | Ledger balances under tests; no duplicate payout    | **Done**                           |
-| 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | Not started                        |
+| 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | **Done**                           |
 | 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | Not started                        |
 | 8     | Docker, staging, env validation, backups/restore drill, deploy & rollback guide                                                                                        | **Your production approval**                        | Not started                        |
 
@@ -42,6 +42,30 @@ The full browser journey needs payment approval to start matching; it comes with
 
 Done (API + web, `AUTH_MODE=wan`): ICTSpark's manual payment flow with S1–S4 closed (sign-in and ownership, unique TrxID index, private proof, accountant verification in one transaction), receiving accounts, double-entry ledger with database-enforced balance and immutability, 20/80 commission frozen per order, mentor pending → available earnings, payouts and refunds with maker-checker, reconciliation, invoices, and the accountant, mentor, student and guardian money pages. The full browser journey (order → pay → verify → match → deliver → approve → close → payout) runs end to end against the real hub, API and web. Fees, refunds and tax rules: `PAYMENT_AND_COMMISSION.md`. Not built: gateways (no merchant credentials), referral rewards (needs a reward rule), statement import.
 
-## Next — Phase 6
+## Phase 6 outcome
 
-Mentor verification (documents, review queue), skill tests, badges, ranking pages, paid boosts and subscriptions (labelled as paid, separate from verification), coupons, CMS/blog — reusing ICTSpark admin features where they fit.
+Done (API + web, `AUTH_MODE=wan`):
+
+- **Mentor verification.** Follows ICTSpark's MentorApplication review. Documents are private (magic bytes checked, EXIF removed, served sandboxed) and every view by a reviewer is audited. A different admin approves or sends back with a reason, and can later revoke.
+- **Matching and directory.** Verified mentors rank higher. An optional `require_verified_mentors` rule limits offers to verified mentors.
+- **Skill tests.** Server-graded: answers are never sent to the browser, there is a time limit and a retake period.
+- **Badges.** Computed from checked facts: verified, skill, top rated, on time, 20+ orders.
+- **Paid boosts and Pro.**
+  - Bought from earnings through the ledger, with no auto-renewal.
+  - Always labelled "paid" and shown in a separate Featured row.
+  - They never change the organic order, matching or verification.
+- **Coupons.** Server-checked, with limits under a row lock, and released on cancellation.
+- **Blog.** Mentors and staff write posts; another admin publishes them (ICTSpark's status flow). CMS pages are served at `/p/…`.
+- **Public pages.** The live mentor directory and blog.
+
+Not built:
+
+- Student ranking or leaderboard: `/leaderboard` still shows sample data.
+- Student or institution verification.
+- Profile completion score.
+- A jobs/tuition board: `marketplace-jobs` is a different domain, a job board with applications. It is kept for a later decision rather than bolted on.
+- Banners and website messaging admin pages: still sample data.
+
+## Next — Phase 7
+
+Security hardening: an unauthorized-access sweep over every API route, rate-limit tests, security headers on the web, dependency audit, a performance check.

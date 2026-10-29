@@ -93,6 +93,8 @@ test.describe.configure({ mode: "serial" });
  * 10 registrations per 15 minutes from one address, and the suite needs more people.
  */
 let superAdmin: { page: Page; email: string } | undefined;
+/** The student and mentor of the order journey, reused by later tests. */
+let journey: { student: Page; mentor: Page } | undefined;
 
 test("WAN sign-in → onboarding → role-gated dashboards → admin roles → hub suspension", async ({
   browser,
@@ -464,7 +466,15 @@ test("full order journey: order → pay → verify → match → deliver → app
 
   // The mentor gets the offer and accepts it, starts and delivers.
   await mp.goto("/mentor/offers");
-  await mp.getByRole("button", { name: "Accept" }).first().click();
+  // Orders left matching by earlier runs may be offered too: take this run's order.
+  const code = ((await (await p.request.get(`/api/orders/${orderId}`)).json()) as { code: string })
+    .code;
+  await mp
+    .getByRole("listitem")
+    .filter({ hasText: code })
+    .getByRole("button", { name: "Accept" })
+    .click();
+  await expect(mp).toHaveURL(new RegExp(`/mentor/orders/${orderId}$`));
   await mp.goto(`/mentor/orders/${orderId}`);
   await mp.getByRole("button", { name: "Start work" }).click();
   await expect(mp.getByText("Work started")).toBeVisible();
@@ -517,9 +527,108 @@ test("full order journey: order → pay → verify → match → deliver → app
   await ap.getByRole("button", { name: "Confirm" }).click();
   await expect(ap.getByText("A second person must send the payout")).toBeVisible();
 
+  journey = { student: p, mentor: mp };
+
   // The ledger stays balanced throughout.
   await ap.goto("/accountant");
   await expect(ap.getByText("balanced", { exact: true })).toBeVisible();
+});
+
+test("verification, coupons and the blog: reviewed by staff, shown honestly", async () => {
+  test.skip(!superAdmin || !journey, "needs the earlier tests' people");
+  const ap = superAdmin!.page;
+  const { student: p, mentor: mp } = journey!;
+
+  // The mentor sends documents; another person (the admin) approves → Verified badge.
+  await mp.goto("/mentor/verification");
+  await expect(mp.getByText("Not verified yet.")).toBeVisible();
+  await mp.getByLabel("Type of document").selectOption("identity");
+  await mp.getByTestId("verification-file").setInputFiles({
+    name: "nid.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"),
+  });
+  await expect(mp.getByText("nid.pdf")).toBeVisible();
+  await mp.getByLabel("Type of document").selectOption("qualification");
+  await mp.getByTestId("verification-file").setInputFiles({
+    name: "hsc.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"),
+  });
+  await expect(mp.getByText("hsc.pdf")).toBeVisible();
+  await mp.getByRole("button", { name: "Send for review" }).click();
+  await expect(mp.getByText("Your documents are being reviewed.")).toBeVisible();
+  await ap.goto("/admin/verification");
+  await ap.getByRole("row").filter({ hasText: "Under review" }).first().click();
+  await expect(ap.getByRole("link", { name: /hsc\.pdf/ })).toBeVisible();
+  await ap.getByRole("button", { name: "Approve" }).click();
+  await expect(ap.getByText(/is verified$/)).toBeVisible();
+  await mp.goto("/mentor/badges");
+  await expect(mp.getByText("Verified mentor").first()).toBeVisible();
+
+  // A coupon: the student's quote and order use the server's discount.
+  const code = `KHATA${run.slice(-4).toUpperCase()}`;
+  await ap.goto("/admin/coupons");
+  await ap.getByRole("button", { name: "New coupon" }).click();
+  await ap.getByLabel("Code").fill(code);
+  await ap.getByLabel("Percent").fill("10");
+  await ap.getByRole("button", { name: "Create" }).click();
+  await expect(ap.getByText(`${code} created`)).toBeVisible();
+  await p.goto("/student/new-order");
+  await p.getByText("Practical Khata (Handwritten)").click();
+  await p.getByLabel("Type of work").selectOption("practical_khata");
+  await p.getByLabel("Level").selectOption("hsc");
+  await p.getByLabel("Subject").selectOption("biology");
+  await p.getByRole("button", { name: "Next" }).click();
+  await p.getByLabel("Title").fill("Biology practical khata, chapter 5");
+  await p
+    .getByLabel("Instructions")
+    .fill("Dhaka board. Chapter 5 experiments, labelled diagrams, neat handwriting.");
+  await p.getByLabel("Pages").fill("10");
+  await p.getByRole("button", { name: "Next" }).click();
+  const d = new Date(Date.now() + 3 * 24 * 3600_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  await p
+    .getByLabel("Deadline")
+    .fill(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T10:00`);
+  await p.getByRole("button", { name: "Next" }).click();
+  await p.getByLabel("Coupon code").fill(code.toLowerCase());
+  await p.getByRole("button", { name: "Apply" }).click();
+  await p.getByRole("checkbox").check();
+  // ৳500 − 10%.
+  await p.getByRole("button", { name: /Place order · ৳450/ }).click();
+  await expect(p).toHaveURL(/\/student\/orders\/[0-9a-f-]{36}$/);
+  await expect(p.getByText("৳450").first()).toBeVisible();
+
+  // The mentor writes a post; the admin publishes it; anyone can read it.
+  await mp.goto("/mentor/blog");
+  await mp.getByRole("button", { name: "New post" }).click();
+  await mp.getByLabel("Title").fill(`Neat amoeba drawings ${run}`);
+  await mp
+    .getByLabel("Text")
+    .fill("Start with a light outline.\n\n## Label clearly\n\n- Nucleus\n- Pseudopodia");
+  await mp.getByRole("button", { name: "Send for review" }).click();
+  await expect(mp.getByText("Waiting for review").first()).toBeVisible();
+  await ap.goto("/admin/blog");
+  await ap
+    .getByRole("row")
+    .filter({ hasText: `Neat amoeba drawings ${run}` })
+    .click();
+  await ap.getByRole("button", { name: "Publish" }).click();
+  await expect(
+    ap.getByRole("row").filter({ hasText: `Neat amoeba drawings ${run}` }).getByText("Published"),
+  ).toBeVisible();
+  await p.goto("/blog");
+  await p
+    .getByRole("link", { name: new RegExp(`Neat amoeba drawings ${run}`) })
+    .first()
+    .click();
+  await expect(p.getByRole("heading", { name: "Label clearly" })).toBeVisible();
+  await expect(p.getByRole("listitem").filter({ hasText: "Pseudopodia" })).toBeVisible();
+
+  // The public directory shows the verified mentor with the badge.
+  await p.goto("/mentors");
+  await expect(p.getByText("Verified mentor").first()).toBeVisible();
 });
 
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {

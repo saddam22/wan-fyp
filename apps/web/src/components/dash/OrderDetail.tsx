@@ -578,7 +578,7 @@ export function OrderDetail({
                     {viewer === "mentor" ? order.studentName : order.mentorName}
                   </p>
                   <p className="text-xs text-muted">
-                    {viewer === "mentor" ? "Student" : "Verified mentor"}
+                    {viewer === "mentor" ? "Student" : live ? "Mentor" : "Verified mentor"}
                   </p>
                 </div>
               </div>
