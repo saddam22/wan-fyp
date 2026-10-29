@@ -1,0 +1,97 @@
+# EduKhata staging: PostgreSQL + API (internal only) + web + Caddy (HTTPS).
+# The WAN Identity Hub runs separately (its own repo); set WAN_HUB_URL to it.
+#   cp deploy/.env.staging.example deploy/.env.staging   # fill in
+#   node scripts/check-env.mjs staging deploy/.env.staging
+#   docker compose -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging up -d --build
+name: edukhata-staging
+
+services:
+  db:
+    image: postgres:16.11-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: edukhata
+      POSTGRES_USER: edukhata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edukhata -d edukhata"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  api:
+    build:
+      context: ..
+      target: api
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22.22.0-bookworm-slim}
+    image: edukhata-api:${EDK_TAG:-staging}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://edukhata:${POSTGRES_PASSWORD}@db:5432/edukhata
+      WEB_URL: ${WEB_URL:?set WEB_URL}
+      WAN_HUB_URL: ${WAN_HUB_URL:?set WAN_HUB_URL}
+      EDK_CLIENT_ID: ${EDK_CLIENT_ID:-edukhata}
+      EDK_CLIENT_SECRET: ${EDK_CLIENT_SECRET:?set EDK_CLIENT_SECRET}
+      CHAT_SECRET: ${CHAT_SECRET:?set CHAT_SECRET}
+      TRUST_PROXY: ${TRUST_PROXY:-172.16.0.0/12}
+      HUB_CHECK_INTERVAL_SEC: ${HUB_CHECK_INTERVAL_SEC:-600}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      CALL_STUN_URLS: ${CALL_STUN_URLS:-}
+      CALL_TURN_URLS: ${CALL_TURN_URLS:-}
+      CALL_TURN_SECRET: ${CALL_TURN_SECRET:-}
+    volumes:
+      - files:/data
+    # No published port: only the web container reaches the API.
+    networks: [internal]
+
+  web:
+    build:
+      context: ..
+      target: web
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22.22.0-bookworm-slim}
+        API_INTERNAL_URL: http://api:4200
+        NEXT_PUBLIC_SITE_URL: ${WEB_URL}
+        NEXT_PUBLIC_WAN_HUB_URL: ${WAN_HUB_URL}
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+        NEXT_PUBLIC_ADS_URL: ${NEXT_PUBLIC_ADS_URL:-}
+        NEXT_PUBLIC_ADS_APP_KEY: ${NEXT_PUBLIC_ADS_APP_KEY:-}
+    image: edukhata-web:${EDK_TAG:-staging}
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      API_INTERNAL_URL: http://api:4200
+      AUTH_MODE: wan
+    networks: [internal, edge]
+
+  caddy:
+    image: caddy:2.10.2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [web]
+    networks: [edge]
+
+volumes:
+  pgdata:
+  files:
+  caddy:
+
+networks:
+  internal:
+    internal: true
+  edge:

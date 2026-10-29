@@ -813,6 +813,16 @@ P2: list[tuple[str, str, str, str, str, str]] = [
     ("M18", "Role/permission tests", "EV", "API sweep + UI access + real sign-in", "—", "security.test, access.spec, e2e-wan"),
     ("M18", "Performance tests", "EI", "seeded in-process check (PERF=1)", "—", "perf.test"),
     ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "94 tests"),
+    # Phase 8 — staging packaging (2026-10-29)
+    ("M17", "Backup & recovery", "EV", "scripts/backup.sh, restore.sh (refuses non-empty targets), backup-drill.sh", "pg_dump custom + files tar", "drill run 2026-10-29"),
+    ("M17", "Secret management", "EI", "env only; check-env.mjs + config refuse dev/reused/short secrets; vault on the host", "—", "config.test"),
+    ("M18", "Docker / compose", "EV", "Dockerfile (api, web targets), deploy/docker-compose.staging.yml + Caddy", "—", "local image build + compose run"),
+    ("M18", "Environment config", "EV", ".env.example files, deploy/.env.staging.example, scripts/check-env.mjs", "—", "config.test"),
+    ("M18", "Domain + SSL", "EI", "Caddy automatic HTTPS (needs a real domain)", "—", "—"),
+    ("M18", "Setup / deployment docs", "EV", "DEPLOYMENT_GUIDE.md (deploy, smoke test, backups, rollback)", "—", "—"),
+    ("M18", "Backup/restore drill", "EV", "scripts/backup-drill.sh", "—", "drill passed on e2e and test databases"),
+    ("M18", "Production build validation", "EV", "pnpm check + image build", "—", "pnpm check"),
+    ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "96 tests"),
 ]
 
 

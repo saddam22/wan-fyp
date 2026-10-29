@@ -1,0 +1,9 @@
+# HTTPS for the web app (certificates from Let's Encrypt). WebSockets (chat, calls) pass through.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3200
+	# Uploads go through /api; allow up to 10 MB bodies.
+	request_body {
+		max_size 10MB
+	}
+}

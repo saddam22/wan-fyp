@@ -12,3 +12,7 @@ playwright-report/
 # Local chat uploads (apps/api CHAT_UPLOAD_DIR)
 .data/
 __pycache__/
+!.env.*.example
+
+# Database/file backups (scripts/backup.sh)
+backups/

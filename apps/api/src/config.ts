@@ -54,10 +54,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (production && (!webUrl.startsWith("https://") || !hubUrl.startsWith("https://"))) {
     throw new Error("WEB_URL and WAN_HUB_URL must use https in production");
   }
+  if (!/^postgres(ql)?:\/\//.test(databaseUrl))
+    throw new Error("DATABASE_URL must be a postgres:// URL");
+  if (production) {
+    if (clientSecret === DEV_CLIENT_SECRET || chatSecret === DEV_CHAT_SECRET)
+      throw new Error("Development secrets can't be used in production");
+    if (clientSecret === chatSecret)
+      throw new Error("CHAT_SECRET and EDK_CLIENT_SECRET must be different");
+  }
+  const port = Number(env.PORT ?? 4200);
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw new Error("PORT must be a port number");
   return {
     production,
     host: env.HOST ?? "0.0.0.0",
-    port: Number(env.PORT ?? 4200),
+    port,
     databaseUrl,
     webUrl,
     hubUrl,

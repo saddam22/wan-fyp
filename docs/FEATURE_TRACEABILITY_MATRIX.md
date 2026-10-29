@@ -10,9 +10,9 @@ Columns FE / API / DB / Tests are filled as each feature is built. Acceptance cr
 
 | Status | Count |
 |---|---|
-| Existing and verified | 142 |
-| Missing | 88 |
-| Existing but incomplete | 41 |
+| Existing and verified | 148 |
+| Missing | 81 |
+| Existing but incomplete | 42 |
 | Requires extension | 21 |
 | Requires integration | 9 |
 | Available through existing API | 4 |
@@ -380,13 +380,13 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M17-07 | Secure upload validation (magic bytes, size, type) | Existing and verified | chat-messaging sniff.ts | system | client-side type/size checks only | signed URL (key/size/type/expiry) + module magic-byte check | — | chat.test |
 | M17-08 | Private object storage + signed URLs | Existing but incomplete | chat-messaging signing.ts | system | — | local disk, signed attachment URLs (S3 later) | — | chat.test |
 | M17-09 | ID document access control | Existing and verified | — | system | — | reviewers + owner only, views audited | verification_files | trust.test |
-| M17-10 | Secret management | Existing but incomplete | — | ops | — | env only, .env.example, secrets check; vault in deployment | — | repo scan |
+| M17-10 | Secret management | Existing but incomplete | — | ops | — | env only; check-env.mjs + config refuse dev/reused/short secrets; vault on the host | — | config.test |
 | M17-11 | Token / session handling (server-side, httpOnly) | Existing and verified | — | system | — | httpOnly ek_sid, SHA-256 stored, idle + absolute expiry | sessions | api.test |
 | M17-12 | Webhook signature verification | Missing | — | system | — | — | — | — |
 | M17-13 | Duplicate transaction / payout protection | Existing and verified | — | system | — | unique TrxID/reference indexes, idempotent ledger | payments, ledger | payments.test, money.test |
 | M17-14 | Audit logs | Existing but incomplete | — | system | — | staff, money, verification, content actions (no hash chain) | audit_log | several tests |
 | M17-15 | Privacy controls + data retention | Missing | — | system | — | — | — | — |
-| M17-16 | Backup & recovery | Missing | — | ops | — | — | — | — |
+| M17-16 | Backup & recovery | Existing and verified | — | ops | — | scripts/backup.sh, restore.sh (refuses non-empty targets), backup-drill.sh | pg_dump custom + files tar | drill run 2026-10-29 |
 | M17-17 | Dependency review | Existing and verified | — | ops | — | pnpm audit; fastify upgraded; upstream dev-only advisories listed | — | SECURITY_AUDIT.md |
 | M17-18 | Unauthorized-access tests | Existing and verified | — | system | — | sweep: anonymous, student, mentor, accountant, admin, cross-origin | — | security.test |
 
@@ -395,7 +395,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
 | M18-01 | Unit tests | Missing | — | dev | vitest (contracts, i18n) | — | — | — |
-| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 94 tests |
+| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 96 tests |
 | M18-03 | Component tests | Missing | — | dev | — | — | — | — |
 | M18-04 | E2E workflow tests (Playwright) | Existing and verified | — | dev | Playwright e2e/ | full order journey with payment and payout | — | e2e-wan |
 | M18-05 | Role/permission tests | Existing and verified | — | dev | e2e/access.spec.ts (UI level) | API sweep + UI access + real sign-in | — | security.test, access.spec, e2e-wan |
@@ -404,14 +404,14 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M18-08 | Revision workflow tests | Existing and verified | — | dev | — | free/paid revisions | — | delivery.test |
 | M18-09 | Responsive UI tests | Missing | — | dev | e2e/pages.spec.ts | — | — | — |
 | M18-10 | Performance tests | Existing but incomplete | — | dev | — | seeded in-process check (PERF=1) | — | perf.test |
-| M18-11 | Production build validation | Missing | — | dev | next build | — | — | — |
-| M18-12 | Docker / compose | Missing | — | ops | — | — | — | — |
-| M18-13 | Environment config (.env.example) | Missing | — | ops | — | — | — | — |
-| M18-14 | Domain + SSL | Missing | — | ops | — | — | — | — |
+| M18-11 | Production build validation | Existing and verified | — | dev | next build | pnpm check + image build | — | pnpm check |
+| M18-12 | Docker / compose | Existing and verified | — | ops | — | Dockerfile (api, web targets), deploy/docker-compose.staging.yml + Caddy | — | local image build + compose run |
+| M18-13 | Environment config (.env.example) | Existing and verified | — | ops | — | .env.example files, deploy/.env.staging.example, scripts/check-env.mjs | — | config.test |
+| M18-14 | Domain + SSL | Existing but incomplete | — | ops | — | Caddy automatic HTTPS (needs a real domain) | — | — |
 | M18-15 | CI/CD | Missing | — | ops | — | — | — | — |
-| M18-16 | Setup / deployment docs | Missing | — | ops | — | — | — | — |
+| M18-16 | Setup / deployment docs | Existing and verified | — | ops | — | DEPLOYMENT_GUIDE.md (deploy, smoke test, backups, rollback) | — | — |
 | M18-17 | Monitoring | Missing | — | ops | — | — | — | — |
-| M18-18 | Backup/restore drill | Missing | — | ops | — | — | — | — |
+| M18-18 | Backup/restore drill | Existing and verified | — | ops | — | scripts/backup-drill.sh | — | drill passed on e2e and test databases |
 
 ## X01 — Ecosystem extras (section 6)
 
