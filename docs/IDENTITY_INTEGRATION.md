@@ -30,6 +30,10 @@ Browser ──► EduKhata web (Next.js, :3200) ──/api/* rewrite──► Ed
 
 Hub tests after the change: server 39/39, frontend unit 19/19, browser 10/10.
 
+## Realtime modules (Phase 3)
+
+The chat and calling modules authenticate with bearer tokens, not cookies. `GET /api/me/chat-token` (cookie session, onboarded users only) returns a 15-minute HMAC token `base64url(sessionId.expiry).sig` signed with `CHAT_SECRET`. The modules call `sessionTokenAuth`, which accepts the token only while its session is not revoked, expired or idle, and the user is active with at least one marketplace role. Signing out, suspension or hub denial therefore also ends chat and call access. The browser fetches a fresh token before expiry and never sees the session cookie.
+
 ## Configuration
 
 | Where | Variable                                                       | Meaning                                                                         |

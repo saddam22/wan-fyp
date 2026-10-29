@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-29 — Phase 3: existing module integrations (awaiting review)
+
+- WAN modules as pinned git submodules in `modules/`, built by `pnpm build:modules`.
+- Notifications (social-module): bell, inbox, preferences, Web Push plumbing; welcome, role change, guardian, referral, chat and missed-call types.
+- Guardian linking (ICTSpark rules, hardened): hashed one-time codes with 24 h expiry, guess limit, max 6 children, student-set permissions, unlink from either side.
+- Referrals (ICTSpark rules): codes, `?ref=` links (30 days, first link wins), attribution at first onboarding, Refer & Earn for students and guardians, admin attributions. Rewards come with payments (Phase 5).
+- Support chat (chat-messaging): realtime, files with EXIF removed, staff-on-one-side contact rule, groups off, session-bound chat tokens.
+- 1:1 audio/video calls (audio-video-calling): overlay on every dashboard page, buttons in chats, missed-call notifications, no recording.
+- Ad slots (central-ad-platform SDK) on home and blog: labelled, nothing without settings or fill.
+- Upstream (branch `ccr-5992ee5d-65mqhc`): chat-messaging `features.groups`; central-ad-platform SDK compiled build.
+- Moved: reviews → Phase 4; referral rewards → Phase 5.
+- Tests: API 39, real end-to-end 5, UI 401, module suites run first.
+
 ## 2026-10-28 — Phase 2: WAN Identity & access
 
 - New `apps/api` (Fastify 5, PostgreSQL, openid-client): WAN sign-in with Authorization Code + PKCE, server-side sessions (`ek_sid`, hashed, idle/absolute expiry), onboarding gate (student/guardian self-service), EduKhata-owned roles, admin role and suspension management (staff roles super-admin only, last super admin protected), hub access requests, identity audit log, `grant-role` bootstrap CLI, migrations.

@@ -22,6 +22,21 @@ For each candidate integration: source, what exists, integration method, auth, d
 | Listings / jobs                                    | marketplace-jobs            | **Do not use as order engine**; reuse UI stack conventions           | —                                                                          |
 | Mentor skill tests                                 | ictspark exam engine        | **Later** (Phase 6)                                                  | Decision Q3                                                                |
 
+## Status after Phase 3
+
+| Capability           | Done                                                    | How                                                                                             |
+| -------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Identity             | ✅ Phase 2                                              | OIDC BFF, hub H1–H2                                                                             |
+| Notifications / push | ✅                                                      | social-module submodule (`modules/social`), PostgreSQL repositories; follow/groups/pages off    |
+| Chat                 | ✅ support chat; order chat in Phase 4                  | chat-messaging submodule (`modules/chat`), `ChatHost` adapter; upstream `features.groups` added |
+| 1:1 calls            | ✅                                                      | audio-video-calling submodule (`modules/calling`), `PostgresCallStore`; TURN still to configure |
+| Ads                  | ✅ 3 public placements                                  | central-ad-platform submodule (`modules/ads`), `@adp/sdk/dist` (added upstream)                 |
+| Guardian linking     | ✅ rules ported + hardened                              | `apps/api/src/routes/guardians.ts`                                                              |
+| Referral             | ✅ codes + attribution; rewards with payments (Phase 5) | `apps/api/src/routes/referrals.ts`                                                              |
+| Reviews              | ⏭ moved to Phase 4                                      | needs completed orders                                                                          |
+
+Submodules are pinned to tested commits (`.gitmodules`, `ignore = dirty`); chat and ads point at upstream branch `ccr-5992ee5d-65mqhc` commits that still need merging there.
+
 ## Detail
 
 ### 1. WAN Identity Hub

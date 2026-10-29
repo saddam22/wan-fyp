@@ -2,15 +2,16 @@
 
 WANBAHJAHKAS ecosystem marketplace for assignments, handwritten practical khata, drawings and diagrams.
 
-**Status:** Phase 2 (identity & access) complete: real WAN Identity sign-in, sessions, roles and admin user management. Marketplace data (orders, payments, chat…) is still demo data. Start with [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
+**Status:** Phase 3 (existing module integrations) complete, waiting for review. Live with WAN sign-in: notifications, guardian links, referrals, support chat, 1:1 calls and ad slots, on top of Phase 2's sign-in, sessions and roles. Orders, payments and mentor data are still demo data (Phase 4–5). Start with [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
 
 ## Run it
 
 Requirements: Node.js 22.12+, pnpm 10 (`corepack enable`).
 
 ```bash
+git submodule update --init      # WAN modules under modules/ (chat, calling, social, ads)
 pnpm install
-pnpm build                       # builds apps/web
+pnpm build                       # builds modules/, then the apps
 pnpm --filter @edukhata/web start   # http://localhost:3200
 ```
 
@@ -49,14 +50,15 @@ Development secrets default to matching values in the hub and the API; productio
 ```bash
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm e2e        # Playwright UI suite (demo mode); set CHROMIUM_PATH if needed
-pnpm e2e:wan    # real sign-in: starts the hub (../wan-identity-hub), API and web; needs DBs wan_identity_e2e, edukhata_e2e
+pnpm e2e:wan    # real sign-in, chat, calls: starts the hub (../wan-identity-hub), API and web (run `pnpm build` first); needs DBs wan_identity_e2e, edukhata_e2e
 ```
 
 ## Layout
 
 ```
 apps/web            Next.js app — src/app (routes), src/components, src/lib (i18n, nav, session)
-apps/api            Fastify 5 + PostgreSQL — WAN sign-in, sessions, roles, admin user management
+apps/api            Fastify 5 + PostgreSQL — WAN sign-in, roles, notifications, guardians, referrals, chat + calls host
+modules/            git submodules: chat-messaging, audio-video-calling, social-module, central-ad-platform
 packages/contracts  Shared types, money/date helpers, access rules, demo fixtures, mock adapter
 docs/               Project tracking (overview, inventory, architecture, audits, roadmap, traceability)
 scripts/            gen_traceability.py → docs/FEATURE_TRACEABILITY_MATRIX.md

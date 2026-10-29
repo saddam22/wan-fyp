@@ -1,5 +1,31 @@
 # Testing Report
 
+## Phase 3 — module integrations (2026-10-29)
+
+| Suite                                                               | Where              | Result                                                                                                        |
+| ------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Each module's own tests before integrating                          | module repos       | chat 79 (incl. 2 new for `features.groups`), calling 82, social 47, ad SDK 9                                  |
+| EduKhata API integration (Vitest, real PostgreSQL)                  | `apps/api/test`    | **39 / 39**: identity 17, notifications 5, guardians 6, referrals 4, chat 4, calls 3 (real WebSocket clients) |
+| Real end-to-end (Playwright, real hub + API + web, `AUTH_MODE=wan`) | `apps/web/e2e-wan` | **5 / 5**                                                                                                     |
+| Demo-mode UI suite                                                  | `apps/web/e2e`     | **401 pass**, 2 skipped                                                                                       |
+| Unit (contracts + i18n)                                             | `pnpm test`        | 16 / 16                                                                                                       |
+| Lint, typecheck, format, build (modules + apps)                     | `pnpm check`       | Pass                                                                                                          |
+
+New end-to-end journeys:
+
+- **Notifications:** role change → bell dot → dropdown → inbox → opening a notification follows its link.
+- **Guardian:** a student creates a code; a guardian's wrong code is refused with the generic message; the right code links (case-insensitive); the child shows class and institution. The student turns off "view payments" (the guardian's privacy page shows it) and unlinks; the guardian loses access.
+- **Referral:** someone opens `/how-it-works?ref=CODE` before having a WAN ID → registers → onboarding shows "invited by" → the referrer's Refer & Earn page and notifications show the new friend.
+- **Chat + call:** a student can't find other students and has no group option. They message support; it arrives live at the support desk with a notification. Support replies live. The student places a real WebRTC audio call from the chat header (Chromium fake devices); support accepts on another page; both see the timer; the student ends the call.
+
+API tests also cover: dedupe/aggregation, pagination, mandatory types surviving opted-out categories, ownership on read/open. Guardian codes: hash-only storage, expiry, regeneration revokes, the guess limit, max 6 under concurrent linking, 409 rollback keeping the code, role checks, the audit trail, BD mobile matching. Referrals: typed code beating the link, first attribution kept, staff/suspended codes ignored. Chat/calls: tokens die with the session, signed upload tampering (signature, type, size) refused, EXIF removed, groups 403, missed call notification.
+
+Manual check (not automated, because ad settings are baked in at build time): built with ad settings and intercepted the ad server. A filled ad shows labelled "Sponsored" with `rel=sponsored`; no-fill shows nothing; requests carry only app key, placement and random ids; no request without settings.
+
+Bugs found by testing and fixed: zod v4 `record` over an enum requires all keys (preferences); the module's 422 vs the API's 400 for validation; IP-keyed limit on code creation would block whole schools; the permission checkbox waited for the server; Next stripped Socket.IO's trailing slash (redirect, then rewrite); the stale chat module build; the S10 client-reference bug (ads enabled without settings).
+
+Not tested: TURN/relay calls, real phones and mobile networks, Web Push delivery (no VAPID keys), ad impression beacons.
+
 ## Phase 2 — identity & access (2026-10-28)
 
 | Suite                                                                                                   | Where                               | Result                                      |
