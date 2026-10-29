@@ -90,6 +90,22 @@ Images are tagged with the commit (`EDK_TAG`). To roll back:
 
 Always take a backup immediately before deploying a release that contains a migration.
 
+## wanfyp.online (one server, preview)
+
+`deploy/wanfyp.online/` runs everything on one Ubuntu server: Postgres, WAN ID (`id.wanfyp.online`), the API, the web (`wanfyp.online`) and Caddy (automatic HTTPS). The owner approved putting it on the server; it stays a **preview** (`NEXT_PUBLIC_DEMO_MODE=true`, banner on) until the production list above is done.
+
+Needs: a VPS (Ubuntu 22.04/24.04, 2+ CPU, 4+ GB RAM); DNS A records for `wanfyp.online`, `www.wanfyp.online` and `id.wanfyp.online` pointing at it; a Resend account with `wanfyp.online` verified (sign-up codes go by email); a fine-grained GitHub token with read-only Contents on wan-fyp, wan-identity-hub and the five module repos.
+
+```bash
+apt-get update && apt-get install -y git
+git clone --branch ccr-5992ee5d-65mqhc https://github.com/saddam22/wan-fyp.git /opt/wanfyp/wan-fyp
+bash /opt/wanfyp/wan-fyp/deploy/wanfyp.online/install.sh
+```
+
+The script installs Docker, asks for the token and the Resend key, generates every secret into `deploy/wanfyp.online/.env` (mode 600, never committed), builds, backs up both databases if a site is already running, and starts. Re-run it to update. Then sign up at the site and grant the first super admin with the command it prints.
+
+Verified here: the stack builds and starts (db, hub, API, web healthy; hub issuer `https://id.wanfyp.online/oidc`). Not verified here: Caddy certificates and the sign-in round-trip, which need the real DNS. Known limits: email-only sign-up (no SMS provider), calls between mobile networks need a TURN server.
+
 ## Production (only after the owner approves)
 
 Production uses the same steps with `deploy/.env.production` (validate it with `node scripts/check-env.mjs production …`). It also needs:

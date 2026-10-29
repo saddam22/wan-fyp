@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 — Server kit for wanfyp.online
+
+- `deploy/wanfyp.online/`: one-server compose (Postgres, WAN ID, API, web, Caddy HTTPS) and `install.sh` (installs Docker, generates secrets, backs up, builds, starts; re-run to update). Still a preview.
+
 ## 2026-10-29 — Owner decisions: payout fee, document retention, jobs board
 
 - The payout transfer fee is the mentor's (recorded by the sending accountant, max 5%); mentors see the estimate, the fee and what they received.

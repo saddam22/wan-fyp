@@ -1,0 +1,20 @@
+# HTTPS certificates come from Let's Encrypt automatically (DNS must point here first).
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 12MB
+	}
+	reverse_proxy web:3200
+}
+
+www.{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
+{$ID_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 8MB
+	}
+	reverse_proxy hub:4100
+}

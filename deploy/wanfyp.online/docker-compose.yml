@@ -1,0 +1,120 @@
+# wanfyp.online on one server: EduKhata (web + API) + WAN Identity Hub + PostgreSQL + Caddy.
+# Set up by install.sh (it clones wan-identity-hub next to wan-fyp and writes .env).
+#   https://wanfyp.online       EduKhata
+#   https://id.wanfyp.online    WAN ID (sign-in)
+name: wanfyp
+
+services:
+  db:
+    image: postgres:16.11-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: edukhata
+      POSTGRES_USER: edukhata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb.sql:/docker-entrypoint-initdb.d/10-wan-identity.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edukhata -d edukhata"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  hub:
+    build: ../../../wan-identity-hub
+    image: wan-identity-hub:${EDK_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PUBLIC_URL: https://${ID_DOMAIN}
+      DATABASE_URL: postgresql://edukhata:${POSTGRES_PASSWORD}@db:5432/wan_identity
+      COOKIE_KEYS: ${HUB_COOKIE_KEY:?set HUB_COOKIE_KEY}
+      OIDC_JWKS: ${HUB_OIDC_JWKS:?set HUB_OIDC_JWKS}
+      # Only EduKhata signs in through this hub.
+      OIDC_CLIENTS: '[{"client_id":"edukhata","client_secret":"${EDK_CLIENT_SECRET}","redirect_uris":["https://${SITE_DOMAIN}/api/auth/callback"],"post_logout_redirect_uris":["https://${SITE_DOMAIN}/"],"platformId":"edukhata"}]'
+      EDK_WEB_URL: https://${SITE_DOMAIN}
+      EDK_CLIENT_SECRET: ${EDK_CLIENT_SECRET}
+      # No SMS gateway yet: the hub's "closed demo" mode with the public code outbox OFF.
+      # Email codes are real (Resend); phone sign-up waits for an SMS gateway.
+      DEMO_MODE: "true"
+      DEV_OUTBOX: "false"
+      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
+    volumes:
+      - hubdata:/data
+    networks: [internal, edge]
+
+  api:
+    build:
+      context: ../..
+      target: api
+    image: edukhata-api:${EDK_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://edukhata:${POSTGRES_PASSWORD}@db:5432/edukhata
+      WEB_URL: https://${SITE_DOMAIN}
+      WAN_HUB_URL: https://${ID_DOMAIN}
+      EDK_CLIENT_ID: edukhata
+      EDK_CLIENT_SECRET: ${EDK_CLIENT_SECRET}
+      CHAT_SECRET: ${CHAT_SECRET:?set CHAT_SECRET}
+      TRUST_PROXY: 172.16.0.0/12
+      CALL_STUN_URLS: ${CALL_STUN_URLS:-stun:stun.l.google.com:19302}
+      CALL_TURN_URLS: ${CALL_TURN_URLS:-}
+      CALL_TURN_SECRET: ${CALL_TURN_SECRET:-}
+    volumes:
+      - files:/data
+    # No published port. It reaches the hub over HTTPS (edge network), the web reaches it here.
+    networks: [internal, edge]
+
+  web:
+    build:
+      context: ../..
+      target: web
+      args:
+        API_INTERNAL_URL: http://api:4200
+        NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
+        NEXT_PUBLIC_WAN_HUB_URL: https://${ID_DOMAIN}
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-true}
+    image: edukhata-web:${EDK_TAG:-latest}
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      API_INTERNAL_URL: http://api:4200
+      AUTH_MODE: wan
+    networks: [internal, edge]
+
+  caddy:
+    image: caddy:2.10.2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      ID_DOMAIN: ${ID_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on: [web, hub]
+    networks:
+      edge:
+        # The API reaches the hub by its public name through Caddy.
+        aliases: ["${ID_DOMAIN}"]
+
+volumes:
+  pgdata:
+  hubdata:
+  files:
+  caddy:
+
+networks:
+  internal:
+    internal: true
+  edge:
