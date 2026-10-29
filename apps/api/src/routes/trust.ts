@@ -44,6 +44,7 @@ interface FileRow {
   storage_key: string;
   uploaded: boolean;
   created_at: Date;
+  deleted_at: Date | null;
 }
 
 const fileDto = (f: FileRow) => ({
@@ -54,7 +55,40 @@ const fileDto = (f: FileRow) => ({
   byteSize: f.byte_size,
   uploaded: f.uploaded,
   createdAt: f.created_at.toISOString(),
+  // Deleted after the retention period (owner decision: 6 months after the decision).
+  ...(f.deleted_at ? { deletedAt: f.deleted_at.toISOString() } : {}),
 });
+
+/**
+ * Deletes verification documents once the retention period has passed: 6 months (setting
+ * `verification_doc_retention_days`) after the request was decided, or after upload for
+ * documents never sent for review. Pending requests keep theirs. The decision itself and
+ * the verified status stay; only the files (and their bytes) go.
+ */
+export async function purgeVerificationDocs(db: Queryable, config: Deps["config"]) {
+  const storage = diskStorage(
+    config.orderFilesDir,
+    config.chatSecret,
+    "/api/verification-files",
+    "verification",
+  );
+  const days = (await getSettings(db)).verification_doc_retention_days;
+  const due = (
+    await db.query<FileRow>(
+      `select f.* from verification_files f left join mentor_verifications v on v.id = f.verification_id
+        where f.deleted_at is null and (
+          (v.id is not null and v.status <> 'pending' and coalesce(v.reviewed_at, v.created_at) < now() - make_interval(days => $1))
+          or (f.verification_id is null and f.created_at < now() - make_interval(days => $1)))
+        limit 500`,
+      [days],
+    )
+  ).rows;
+  for (const f of due) {
+    await storage.delete(f.storage_key);
+    await db.query("update verification_files set deleted_at = now() where id = $1", [f.id]);
+  }
+  return due.length;
+}
 
 /** Staff (admins) review identity and qualification documents; skill tests are server-graded. */
 export const trustRoutes: FastifyPluginAsync<Deps> = async (
@@ -121,7 +155,7 @@ export const trustRoutes: FastifyPluginAsync<Deps> = async (
     ).rows[0];
     const drafts = (
       await db.query<FileRow>(
-        "select * from verification_files where mentor_id = $1 and verification_id is null and uploaded order by created_at",
+        "select * from verification_files where mentor_id = $1 and verification_id is null and uploaded and deleted_at is null order by created_at",
         [s.user.id],
       )
     ).rows;
@@ -283,9 +317,10 @@ export const trustRoutes: FastifyPluginAsync<Deps> = async (
   app.get<{ Params: { id: string } }>("/verification-files/:id", async (req, reply) => {
     const s = await requireUser(db, config, hub, req);
     const f = (
-      await db.query<FileRow>("select * from verification_files where id::text = $1 and uploaded", [
-        req.params.id,
-      ])
+      await db.query<FileRow>(
+        "select * from verification_files where id::text = $1 and uploaded and deleted_at is null",
+        [req.params.id],
+      )
     ).rows[0];
     const staff = s.roles.some((r) => REVIEWERS.includes(r));
     if (!f || (!staff && f.mentor_id !== s.user.id)) throw new ApiError("not_found", "No file");

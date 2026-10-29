@@ -61,6 +61,10 @@ function History({ items, lang }: { items: Payout[]; lang: Lang }) {
                 <p className="text-xs text-muted">
                   Requested {formatDate(p.requestedAt, lang)}
                   {p.reference && ` · ref ${p.reference}`}
+                  {p.fee &&
+                    p.fee.amountMinor > 0 &&
+                    p.received &&
+                    ` · fee ${formatMoney(p.fee, lang)}, received ${formatMoney(p.received, lang)}`}
                   {p.note && ` · ${p.note}`}
                 </p>
               </div>
@@ -79,7 +83,11 @@ async function LivePayouts({ lang }: { lang: Lang }) {
     apiFetch("/mentor/earnings"),
   ]);
   if (!res.ok || !earn.ok) return <ApiProblem status={res.ok ? earn.status : res.status} />;
-  const p = (await res.json()) as { minPayoutMinor: number; items: Payout[] };
+  const p = (await res.json()) as {
+    minPayoutMinor: number;
+    feeEstimatePct: number;
+    items: Payout[];
+  };
   const e = (await earn.json()) as { availableMinor: number };
   const open = p.items.some((x) => x.status === "requested" || x.status === "approved");
   return (
@@ -96,6 +104,10 @@ async function LivePayouts({ lang }: { lang: Lang }) {
           ) : (
             <PayoutRequest availableMinor={e.availableMinor} minMinor={p.minPayoutMinor} live />
           )}
+          <p className="mt-3 text-xs text-muted">
+            The bKash/Nagad/bank transfer fee is yours: it is taken from the payout (usually about{" "}
+            {Math.round(p.feeEstimatePct * 1000) / 10}%). The exact fee is shown once it is sent.
+          </p>
         </Card>
         <History items={p.items} lang={lang} />
       </div>

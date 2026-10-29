@@ -151,15 +151,30 @@ describe("refunds, payouts, reconciliation, invoices", () => {
         })
       ).statusCode,
     ).toBe(403);
+    // The transfer fee is the mentor's (owner decision), capped at 5% of the payout.
+    expect(
+      (
+        await acc2.b.post(`/accountant/payouts/${pid}/paid`, {
+          fromAccountId: bk.key,
+          reference: "PO1234567",
+          feeMinor: 2000,
+        })
+      ).statusCode,
+    ).toBe(400);
     const sent = await acc2.b.post(`/accountant/payouts/${pid}/paid`, {
       fromAccountId: bk.key,
       reference: "PO1234567",
+      feeMinor: 555,
     });
     expect(sent.json()).toMatchObject({
       status: "paid",
       reference: "PO1234567",
       paidBy: "Second Accountant",
+      fee: { amountMinor: 555 },
+      received: { amountMinor: 30000 - 555 },
     });
+    // The whole payout left the account (sent + fee); the mentor isn't owed the fee back.
+    expect(await earnings(m)).toMatchObject({ availableMinor: 10000 });
     expect((await bal(acc)).trialBalanceMinor).toBe(0);
 
     // A rejected payout returns the money to the available balance.

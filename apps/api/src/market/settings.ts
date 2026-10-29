@@ -46,6 +46,12 @@ export const SETTINGS_SCHEMA = z.object({
   boost_7d_minor: z.number().int().min(0).max(10_000_000),
   pro_monthly_minor: z.number().int().min(0).max(10_000_000),
   pro_yearly_minor: z.number().int().min(0).max(100_000_000),
+  /** Shown to mentors as the expected transfer fee (owner decision: the mentor pays it). */
+  payout_fee_estimate_pct: z.number().min(0).max(0.1),
+  /** The most an accountant can record as a payout's transfer fee. */
+  payout_fee_max_pct: z.number().min(0).max(0.2),
+  /** Verification documents are deleted this many days after the decision (owner: 6 months). */
+  verification_doc_retention_days: z.number().int().min(30).max(3650),
 });
 export type Settings = z.infer<typeof SETTINGS_SCHEMA>;
 export type SettingKey = keyof Settings;

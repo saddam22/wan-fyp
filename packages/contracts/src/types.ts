@@ -230,6 +230,9 @@ export interface Payout {
   reference?: string;
   /** Why it was rejected (shown to the mentor). */
   note?: string;
+  /** The provider's transfer fee (the mentor's) and what reached the mentor. */
+  fee?: Money;
+  received?: Money;
 }
 
 export interface LedgerEntry {

@@ -1,4 +1,5 @@
 import { sweepPromotions } from "./routes/growth.ts";
+import { purgeVerificationDocs } from "./routes/trust.ts";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { createDb, migrate } from "./db.ts";
@@ -83,6 +84,14 @@ const matchingSweep = setInterval(() => {
   );
 }, 30_000);
 matchingSweep.unref();
+// Verification documents past their retention period (6 months after the decision).
+setInterval(
+  () =>
+    void purgeVerificationDocs(app.edkDeps.db, config).catch((e) =>
+      console.error("[verification]", e),
+    ),
+  3600_000,
+).unref();
 // Unsent chat uploads older than a day.
 setInterval(
   () => void chat.chat.service.purgeStaleUploads().catch((e) => console.error("[chat]", e)),

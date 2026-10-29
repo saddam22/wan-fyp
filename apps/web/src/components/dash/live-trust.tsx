@@ -19,6 +19,8 @@ export interface VFile {
   name: string;
   contentType: string;
   byteSize: number;
+  /** Deleted after the retention period (6 months after the decision). */
+  deletedAt?: string;
 }
 export interface VRequest {
   id: string;
@@ -126,7 +128,7 @@ export function MentorVerificationLive({ status }: { status: VStatus }) {
         <Card>
           <CardHeader
             title="Documents"
-            sub="JPG, PNG or PDF up to 8 MB. Photos lose their location data. Only EduKhata reviewers can open them."
+            sub="JPG, PNG or PDF up to 8 MB. Photos lose their location data. Only EduKhata reviewers can open them, and they are deleted 6 months after the decision."
           />
           <div className="space-y-4 p-5">
             {status.draftFiles.length === 0 ? (
@@ -298,14 +300,20 @@ export function VerificationQueueLive({ items }: { items: VRequest[] }) {
             <ul className="space-y-2">
               {sel.files.map((f) => (
                 <li key={f.id}>
-                  <a
-                    href={`/api/verification-files/${f.id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 font-semibold text-[var(--color-accent)]"
-                  >
-                    <FileText size={15} /> {KIND_LABEL[f.kind]} — {f.name}
-                  </a>
+                  {f.deletedAt ? (
+                    <span className="flex items-center gap-2 text-muted">
+                      <FileText size={15} /> {KIND_LABEL[f.kind]} — deleted after 6 months
+                    </span>
+                  ) : (
+                    <a
+                      href={`/api/verification-files/${f.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 font-semibold text-[var(--color-accent)]"
+                    >
+                      <FileText size={15} /> {KIND_LABEL[f.kind]} — {f.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

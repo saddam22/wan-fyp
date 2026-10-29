@@ -54,6 +54,7 @@ interface PayoutRow {
   paid_at: Date | null;
   reference: string | null;
   note: string | null;
+  fee_minor: string;
 }
 
 async function namesOf(db: Queryable, ids: (string | null)[]) {
@@ -235,6 +236,9 @@ export const moneyRoutes: FastifyPluginAsync<Deps> = async (
       mentorId: p.mentor_id,
       mentorName: name(p.mentor_id) ?? "",
       amount: { amountMinor: Number(p.amount_minor), currency: p.currency },
+      // The transfer fee is the mentor's: it is taken from what is sent.
+      fee: { amountMinor: Number(p.fee_minor), currency: p.currency },
+      received: { amountMinor: Number(p.amount_minor) - Number(p.fee_minor), currency: p.currency },
       method: p.method,
       account: p.account,
       ...(p.account_name ? { accountName: p.account_name } : {}),
@@ -259,6 +263,7 @@ export const moneyRoutes: FastifyPluginAsync<Deps> = async (
     const settings = await getSettings(db);
     return {
       minPayoutMinor: settings.min_payout_minor,
+      feeEstimatePct: settings.payout_fee_estimate_pct,
       items: await Promise.all(rows.map(payoutDto)),
     };
   });
@@ -373,7 +378,8 @@ export const moneyRoutes: FastifyPluginAsync<Deps> = async (
       data: {
         code: "Payout",
         title: "",
-        amount: taka(Number(r.p.amount_minor)),
+        // What reaches the mentor (after the transfer fee, which is theirs).
+        amount: taka(Number(r.p.amount_minor) - Number(r.p.fee_minor)),
         note: r.n.note ?? "",
       },
     });
@@ -440,7 +446,12 @@ export const moneyRoutes: FastifyPluginAsync<Deps> = async (
   app.post<{ Params: { id: string } }>("/accountant/payouts/:id/paid", async (req) => {
     const s = await requireUser(db, config, hub, req, "/accountant");
     const b = parse(
-      z.object({ fromAccountId: z.string(), reference: z.string().trim().min(4).max(40) }),
+      z.object({
+        fromAccountId: z.string(),
+        reference: z.string().trim().min(4).max(40),
+        /** The provider's transfer fee, paid by the mentor (deducted from what is sent). */
+        feeMinor: z.number().int().min(0).default(0),
+      }),
       req.body,
     );
     return payoutStep(req.params.id, s.user.id, async (c, p) => {
@@ -450,11 +461,14 @@ export const moneyRoutes: FastifyPluginAsync<Deps> = async (
         throw new ApiError("forbidden", "A second person must send the payout");
       const from = await cashAccount(c, b.fromAccountId);
       const ref = normalizeTrxId(b.reference);
+      const max = Math.floor(Number(p.amount_minor) * (await getSettings(c)).payout_fee_max_pct);
+      if (b.feeMinor > max)
+        throw new ApiError("validation", `The fee can be at most ${taka(max)}`, "feeMinor");
       try {
         await c.query("savepoint ref");
         await c.query(
-          "update payouts set status = 'paid', paid_by = $2, paid_at = now(), from_account_id = $3, reference = $4 where id = $1",
-          [p.id, s.user.id, from, ref],
+          "update payouts set status = 'paid', paid_by = $2, paid_at = now(), from_account_id = $3, reference = $4, fee_minor = $5 where id = $1",
+          [p.id, s.user.id, from, ref, b.feeMinor],
         );
       } catch (e) {
         if (uniqueViolation(e))
@@ -466,7 +480,10 @@ export const moneyRoutes: FastifyPluginAsync<Deps> = async (
         {
           key: `payout:${p.id}:paid`,
           kind: "payout_paid",
-          memo: `Payout sent (${ref})`,
+          // The whole amount leaves the account: sent to the mentor + the provider's fee.
+          memo: b.feeMinor
+            ? `Payout sent (${ref}), ${taka(Number(p.amount_minor) - b.feeMinor)} + fee ${taka(b.feeMinor)}`
+            : `Payout sent (${ref})`,
           payoutId: p.id,
           actorId: s.user.id,
         },

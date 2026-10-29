@@ -103,6 +103,42 @@ describe("mentor verification", () => {
     );
   });
 
+  it("documents are deleted 6 months after the decision; pending ones are kept", async () => {
+    const { purgeVerificationDocs } = await import("../src/routes/trust.ts");
+    const m = await mentor(ctx, "Retained Mentor");
+    const idDoc = await doc(ctx, m, "identity", PDF, "application/pdf");
+    await doc(ctx, m, "qualification", PDF, "application/pdf");
+    const v = (await m.b.post("/mentor/verification", {})).json() as { id: string };
+    const a = await admin("Retention Admin");
+    // Pending: kept even when old.
+    await ctx.db.query(
+      "update mentor_verifications set created_at = now() - interval '400 days' where id = $1",
+      [v.id],
+    );
+    await purgeVerificationDocs(ctx.db, ctx.app.edkDeps.config);
+    expect((await a.b.get(`/verification-files/${idDoc.fileId}`)).statusCode).toBe(200);
+    await a.b.post(`/admin/verifications/${v.id}/decision`, { approve: true });
+    // Decided 5 months ago: kept; 7 months ago: deleted (bytes and access), status stays.
+    await ctx.db.query(
+      "update mentor_verifications set reviewed_at = now() - interval '150 days' where id = $1",
+      [v.id],
+    );
+    await purgeVerificationDocs(ctx.db, ctx.app.edkDeps.config);
+    expect((await a.b.get(`/verification-files/${idDoc.fileId}`)).statusCode).toBe(200);
+    await ctx.db.query(
+      "update mentor_verifications set reviewed_at = now() - interval '210 days' where id = $1",
+      [v.id],
+    );
+    expect(await purgeVerificationDocs(ctx.db, ctx.app.edkDeps.config)).toBe(2);
+    expect((await a.b.get(`/verification-files/${idDoc.fileId}`)).statusCode).toBe(404);
+    const q = (await a.b.get("/admin/verifications")).json() as {
+      id: string;
+      files: { deletedAt?: string }[];
+    }[];
+    expect(q.find((x) => x.id === v.id)!.files.every((f) => f.deletedAt)).toBe(true);
+    expect((await m.b.get("/mentor/verification")).json().verified).toBe(true);
+  });
+
   it("an admin who is also the mentor can't approve their own request", async () => {
     const m = await mentor(ctx, "Admin Mentor");
     await grant(ctx, m.sub, "admin");

@@ -287,7 +287,7 @@ export function PayoutQueue({
   const { lang } = useT();
   const toast = useToast();
   const [rows, setRows] = useState(payouts);
-  const [ref, setRef] = useState<{ p: Payout; v: string; from: string } | null>(null);
+  const [ref, setRef] = useState<{ p: Payout; v: string; from: string; fee: string } | null>(null);
   const [rej, setRej] = useState<{ p: Payout; v: string } | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -312,7 +312,16 @@ export function PayoutQueue({
     if (live) {
       if (status === "approved") return call(p, "approve", {}, msg);
       if (status === "rejected") return setRej({ p, v: "" });
-      return call(p, "paid", { fromAccountId: ref?.from ?? "", reference: reference ?? "" }, msg);
+      return call(
+        p,
+        "paid",
+        {
+          fromAccountId: ref?.from ?? "",
+          reference: reference ?? "",
+          feeMinor: Math.round(Number(ref?.fee || 0) * 100),
+        },
+        msg,
+      );
     }
     setRows((rs) =>
       rs.map((r) =>
@@ -407,7 +416,7 @@ export function PayoutQueue({
                   <Button
                     size="sm"
                     variant="accent"
-                    onClick={() => setRef({ p, v: "", from: accounts[0]?.key ?? "" })}
+                    onClick={() => setRef({ p, v: "", from: accounts[0]?.key ?? "", fee: "" })}
                   >
                     Mark paid
                   </Button>
@@ -496,6 +505,38 @@ export function PayoutQueue({
                 ))}
               </select>
             </Field>
+          </div>
+        )}
+        {live && (
+          <div className="mb-4">
+            <Field
+              label="Transfer fee (৳)"
+              htmlFor="po-fee"
+              hint="The provider's charge. It is the mentor's: send the payout minus this fee."
+            >
+              <input
+                id="po-fee"
+                type="number"
+                min={0}
+                step="0.01"
+                className="input"
+                value={ref?.fee ?? ""}
+                onChange={(e) => ref && setRef({ ...ref, fee: e.target.value })}
+              />
+            </Field>
+            {ref && (
+              <p className="mt-1 text-xs text-muted">
+                Send{" "}
+                {formatMoney(
+                  {
+                    amountMinor: ref.p.amount.amountMinor - Math.round(Number(ref.fee || 0) * 100),
+                    currency: "BDT",
+                  },
+                  lang,
+                )}{" "}
+                to the mentor.
+              </p>
+            )}
           </div>
         )}
         <Field

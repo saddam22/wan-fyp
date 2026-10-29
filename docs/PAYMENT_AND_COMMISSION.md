@@ -62,7 +62,7 @@ Amounts are signed integer paisa: positive is a debit, negative is a credit. Thr
 
 ## Fees, refunds and tax — the rules as built
 
-- **Provider fees.** The payer sends the exact invoice amount. Any send or cash-out charge is the payer's, as with ICTSpark. The fee for sending a payout or refund is **not modelled**: the ledger records the amount the mentor or payer receives. Recommended: the platform bears it, booked from commission. This is owner decision **Q7**.
+- **Provider fees.** The payer sends the exact invoice amount; any send or cash-out charge is the payer's, as with ICTSpark. **Payout fees are the mentor's (owner decision Q7).** When the payout is sent, the accountant records the provider's fee (at most `payout_fee_max_pct`, 5%). The mentor receives the payout minus that fee, and the whole payout leaves the cash account, so the ledger doesn't change. Mentors see an estimate before they request (`payout_fee_estimate_pct`, default 1.85%) and the exact fee afterwards. Refund transfer fees are not modelled yet.
 - **Refunds:**
   - **Student cancellation.** Possible until a mentor starts work (`awaiting_payment`, `payment_review`, `matching`, `assigned`). Everything paid is refunded.
   - **Staff cancellation.** Possible at any point up to delivery, with a reason. Money still held is refunded.
