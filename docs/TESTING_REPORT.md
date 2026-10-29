@@ -1,5 +1,20 @@
 # Testing Report
 
+## Phase 4 — marketplace core (2026-10-29)
+
+| Suite                             | Result                                                                                                                                        |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| API integration (real PostgreSQL) | **61 / 61** (+22): catalog 3, orders 5, matching 6, delivery 4, order chat & reviews 4; full suite green 3× in a row                          |
+| Real end-to-end (`pnpm e2e:wan`)  | **6 / 6**: new — a student places an order through the wizard with a PDF at the server's price (8 × ৳50); a mentor saves the matching profile |
+| Demo UI suite                     | 401 pass                                                                                                                                      |
+| `pnpm check`                      | pass                                                                                                                                          |
+
+Concurrency evidence: 5 rounds × 3 mentors accepting the same order at once always give exactly one 200 and two 409; offer rows end as accepted/withdrawn/withdrawn. Simultaneous accepts by one mentor at capacity 1 give one 200 and one 409.
+
+Bugs found and fixed: test sign-ins hit the per-IP sign-in limit (test browsers now have their own addresses); a mentor approving got 404 instead of 403 (kept as 404, consistent with no-probing); file "round" counting differed between upload and delivery for withdrawn revisions; two earlier test fixes had silently not been applied (guardian concurrency test was flaky ~25%; one referral assertion was vacuous) — both fixed and verified.
+
+Not covered yet: the full browser journey (pay → match → deliver → approve), which needs Phase 5; watermark appearance is checked only by content type, not visually.
+
 ## Phase 3 — module integrations (2026-10-29)
 
 | Suite                                                               | Where              | Result                                                                                                        |

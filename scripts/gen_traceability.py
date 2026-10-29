@@ -649,11 +649,87 @@ P2: list[tuple[str, str, str, str, str, str]] = [
     ("M16", "Notifications + file metadata", "EV", "migration 002; chat module attachments", "notifications, chat_attachments", "notifications.test, chat.test"),
     ("M17", "Secure upload validation", "EV", "signed URL (key/size/type/expiry) + module magic-byte check", "—", "chat.test"),
     ("M17", "Private object storage + signed URLs", "EI", "local disk, signed attachment URLs (S3 later)", "—", "chat.test"),
+    # Phase 4 — marketplace core (2026-10-29)
+    ("M03", "Assignment request creation", "EV", "POST /orders (+ files); wizard on /catalog", "orders, order_files", "orders.test, e2e-wan"),
+    ("M03", "My Orders", "EV", "GET /orders?as=student", "orders", "orders.test, e2e-wan"),
+    ("M03", "Delivery countdown", "EV", "order deadline + reminder sweep", "orders.deadline_reminded_at", "delivery.test"),
+    ("M03", "Work preview (watermarked)", "EV", "preview files watermarked by sharp", "order_files", "delivery.test"),
+    ("M03", "Final file download", "EI", "finals locked until approval (payment rules in Phase 5)", "order_files", "delivery.test"),
+    ("M03", "Approve work", "EV", "POST /orders/:id/approve", "orders", "delivery.test"),
+    ("M03", "Request revision", "EV", "POST /orders/:id/revisions", "order_revisions", "delivery.test"),
+    ("M03", "Mentor rating + review", "EV", "POST /orders/:id/review, moderation", "reviews", "orderchat.test"),
+    ("M03", "Order dispute", "EV", "POST /orders/:id/disputes", "disputes", "delivery.test"),
+    ("M04", "Profile management", "EI", "GET/PUT /mentor/profile (headline, bio, education, institution)", "mentor_profiles", "catalog.test, e2e-wan"),
+    ("M04", "Skills & subjects", "EV", "PUT /mentor/profile subjects/workTypes/levels", "mentor_profiles", "catalog.test, e2e-wan"),
+    ("M04", "Availability status + capacity", "EV", "PUT /mentor/profile available/capacity; enforced in matching", "mentor_profiles", "matching.test"),
+    ("M04", "New order requests", "EV", "GET /mentor/offers, accept/decline", "order_offers", "matching.test"),
+    ("M04", "Deadlines + delivery countdown", "EV", "deadline reminders", "orders", "delivery.test"),
+    ("M04", "Work submission", "EV", "preview/final upload + POST /mentor/orders/:id/deliver", "order_files", "delivery.test"),
+    ("M04", "Revision handling", "EV", "revision_requested → deliver next round", "order_revisions", "delivery.test"),
+    ("M04", "Reviews & ratings", "EI", "GET /mentors/:id/reviews (mentor dashboard page still demo)", "reviews", "orderchat.test"),
+    ("M05", "Subject management", "EI", "PUT /admin/catalog/subjects/:id (admin page still demo)", "subjects", "catalog.test"),
+    ("M05", "Assignment categories", "EI", "PUT /admin/catalog/categories/:slug", "categories", "catalog.test"),
+    ("M05", "Practical notebook categories", "EI", "categories kind=practical", "categories", "catalog.test"),
+    ("M05", "Order types", "EV", "work_type with price list", "price_list, orders", "orders.test"),
+    ("M05", "PDF / image / document upload", "EV", "signed upload + magic bytes + EXIF removal", "order_files", "orders.test"),
+    ("M05", "Student requirements form", "EV", "wizard → POST /orders", "orders", "e2e-wan"),
+    ("M05", "File preview", "EV", "GET /orders/:id/files/:fid (inline images)", "order_files", "delivery.test"),
+    ("M05", "Pricing + quantity", "EV", "POST /orders/quote, price list, admin editable", "price_list", "orders.test, catalog.test"),
+    ("M05", "Revision rules (configurable)", "EV", "free_revisions, paid_revision_fee_pct, max_revisions", "platform_settings", "delivery.test"),
+    ("M05", "Submission history", "EV", "files per round + order events", "order_files, order_events", "delivery.test"),
+    ("M05", "Physical delivery", "EI", "courier fee + address (no tracking yet)", "orders.delivery_address", "orders.test"),
+    ("M06", "Order creation", "EV", "POST /orders", "orders", "orders.test"),
+    ("M06", "Subject & skill matching", "EV", "candidates(): subject, work type, level", "mentor_profiles", "matching.test"),
+    ("M06", "Availability check", "EV", "available flag", "mentor_profiles", "matching.test"),
+    ("M06", "Workload check", "EV", "active orders < capacity (under lock)", "orders", "matching.test"),
+    ("M06", "Performance-based scoring", "EI", "rating, on-time, load, experience (verification in Phase 6)", "reviews, orders", "matching.test"),
+    ("M06", "Time-limited offers", "EV", "offer_ttl_minutes, waves", "order_offers", "matching.test"),
+    ("M06", "Accept / reject", "EV", "/mentor/offers/:id/accept|decline", "order_offers", "matching.test"),
+    ("M06", "First eligible acceptance wins", "EV", "conditional update from matching", "orders", "matching.test"),
+    ("M06", "Atomic assignment", "EV", "advisory lock + row locks + conditional UPDATE", "orders, order_offers", "matching.test"),
+    ("M06", "Concurrent acceptance protection test", "EV", "5×3 simultaneous accepts", "—", "matching.test"),
+    ("M06", "Offer expiry", "EV", "sweep every 30 s", "order_offers", "matching.test"),
+    ("M06", "Retry / fallback matching", "EV", "next wave; admin queue after max waves", "orders.needs_manual_assignment", "matching.test"),
+    ("M06", "Admin manual assignment", "EV", "POST /admin/orders/:id/assign, candidates", "orders", "matching.test"),
+    ("M06", "Assignment history", "EV", "GET /admin/orders/:id/offers + events", "order_offers, order_events", "matching.test"),
+    ("M06", "Reassignment", "EV", "assign over a mentor / unassign / release", "orders", "matching.test, orderchat.test"),
+    ("M06", "Cancellation handling", "EI", "cancel before assignment / staff; refunds in Phase 5", "orders", "orders.test"),
+    ("M06", "Matching notifications", "EV", "order.offer, order.assigned, order.needs_assignment", "notifications", "matching.test"),
+    ("M06", "Direct order to a chosen mentor", "EI", "exclusive first offer to the chosen mentor, then matching", "orders.preferred_mentor_id", "matching.test"),
+    ("M08", "Work review", "EV", "previews + delivery", "order_files", "delivery.test"),
+    ("M08", "Approve / reject", "EV", "approve or revision/dispute", "orders", "delivery.test"),
+    ("M08", "Configurable free revisions", "EV", "free_revisions frozen per order", "orders.free_revisions", "delivery.test"),
+    ("M08", "Paid extra revisions", "EI", "priced and held until payment (Phase 5 hook)", "order_revisions", "delivery.test"),
+    ("M08", "Revision instructions", "EV", "POST /orders/:id/revisions", "order_revisions", "delivery.test"),
+    ("M08", "Revised file submission", "EV", "new round of files", "order_files.round", "delivery.test"),
+    ("M08", "Revision history", "EV", "order DTO revisions", "order_revisions", "delivery.test"),
+    ("M08", "Disputes", "EV", "POST /orders/:id/disputes (one open)", "disputes", "delivery.test"),
+    ("M08", "Admin dispute resolution", "EV", "POST /admin/disputes/:id/resolve", "disputes", "delivery.test"),
+    ("M08", "Refund decisions", "EI", "recorded on the dispute; payout in Phase 5", "disputes.refund_minor", "delivery.test"),
+    ("M08", "Order closure", "EV", "auto-close + admin close", "orders", "delivery.test"),
+    ("M10", "Order history", "EV", "GET /orders?as=guardian (view orders permission)", "guardian_links, orders", "orders.test"),
+    ("M10", "Assignment status", "EV", "order detail for guardians", "orders", "orders.test"),
+    ("M11", "Subject / category management", "EI", "admin catalog API; price list page live", "subjects, categories, price_list", "catalog.test"),
+    ("M11", "Order management + manual assignment", "EV", "staff order list/detail, assign/unassign/cancel/close", "orders", "matching.test, delivery.test"),
+    ("M11", "Dispute management", "EV", "/admin/disputes", "disputes", "delivery.test"),
+    ("M11", "Review moderation", "EV", "/admin/reviews", "reviews", "orderchat.test"),
+    ("M11", "System settings", "EI", "business rules (super admin)", "platform_settings", "catalog.test"),
+    ("M14", "Mentor ranking", "EI", "organic score used in matching; no public ranking page", "reviews, orders", "matching.test"),
+    ("M16", "Orders + status history", "EV", "orders + order_events", "006_orders.sql", "orders.test"),
+    ("M16", "Revisions + disputes", "EV", "order_revisions, disputes", "006, 008", "delivery.test"),
+    ("M16", "Background queue + scheduled jobs", "EI", "in-process 30 s sweep (single instance)", "—", "matching.test, delivery.test"),
+    ("M16", "Assignment / service / portfolio models", "EI", "orders, mentor profiles (no per-mentor services/portfolio)", "mentor_profiles", "catalog.test"),
+    ("M16", "Schema + migrations", "EI", "migrations 001–009 + module migrations", "schema_migrations", "all API tests (fresh schema)"),
+    ("M17", "Injection protection", "EV", "parameterized SQL everywhere", "—", "code review"),
+    ("M18", "Matching concurrency tests", "EV", "simultaneous accepts", "—", "matching.test"),
+    ("M18", "Revision workflow tests", "EV", "free/paid revisions", "—", "delivery.test"),
+    ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "61 tests"),
 ]
 
 
 def p2(mid: str, name: str):
-    for m, sub, st, api, dbr, tests in P2:
+    # Later phases override earlier entries for the same feature.
+    for m, sub, st, api, dbr, tests in reversed(P2):
         if m == mid and sub.lower() in name.lower():
             return st, api, dbr, tests
     return None
@@ -670,7 +746,7 @@ def main() -> None:
     out = ["# Feature Traceability Matrix", "",
            "Generated by `scripts/gen_traceability.py` — edit the script, not this file.", "",
            "Phase 0 baseline; Phase 1 FE references; Phase 2 identity & access (2026-10-28); "
-           "Phase 3 module integrations (2026-10-29). "
+           "Phase 3 module integrations and Phase 4 marketplace core (2026-10-29). "
            "\"Existing source\" means code was **read** in that repository, not run or integrated.", "",
            "Columns FE / API / DB / Tests are filled as each feature is built. "
            "Acceptance criteria per module: see `ACCEPTANCE_CRITERIA.md`.", ""]
@@ -696,7 +772,8 @@ def main() -> None:
     summary += [f"| {S[k]} | {v} |" for k, v in sorted(counts.items(), key=lambda kv: -kv[1])]
     summary += [f"| **Total** | **{total}** |", ""]
     summary += [f"Phase 1: **{ui_count[0]}** features have a frontend (FE column). "
-                "Phases 2–3: identity, notifications, guardian links, referrals, support chat, calls and ad slots "
+                "Phases 2–4: identity, notifications, guardian links, referrals, chat, calls, ad slots, catalog, orders, "
+                "matching, delivery, revisions, disputes and reviews "
                 "are implemented and tested (API/DB/Tests columns); "
                 "everything else is still demo data — a screen alone is not a finished feature.", ""]
     out[8:8] = summary

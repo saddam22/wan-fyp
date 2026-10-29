@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-29 — Phase 4: marketplace core
+
+- Catalog, price list and business rules (commission 20%, 2 free revisions, matching timings; super-admin editable, audited); mentor profiles for matching.
+- Orders priced by the server, with private files (signed upload, magic-byte check, EXIF removed, watermarked previews, finals after approval).
+- Automatic matching: ranked waves of time-limited offers, atomic first acceptance, capacity under lock, expiry and retry, admin queue, manual assignment and reassignment, release, cancellation.
+- Delivery, approval, free and paid revisions (paid ones wait for Phase 5 payment), disputes with release/partial/refund decisions, auto-closure, deadline reminders.
+- Order chats via the chat module (former contacts read-only); reviews with moderation of contact details.
+- Web: live wizard, order pages for every role, mentor offers and profile, admin disputes/reviews/rules/prices.
+- Tests: API 61, real end-to-end 6, UI 401. Open decisions Q16–Q18 added.
+
 ## 2026-10-29 — Phase 3: existing module integrations (awaiting review)
 
 - WAN modules as pinned git submodules in `modules/`, built by `pnpm build:modules`.

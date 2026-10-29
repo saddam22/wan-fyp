@@ -53,4 +53,19 @@ Findings during Phase 3: **S10** (EduKhata) — importing a constant from a `"us
 
 Known gaps: Web Push needs VAPID keys; no TURN; single-instance realtime and file storage; no native ringing.
 
+## Phase 4 — marketplace core (implemented and tested)
+
+| Control                | Implementation                                                                                                                                                                                            | Test                                                                                 |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Assignment exclusivity | Lock order: mentor advisory lock → order row → offer row. A conditional `UPDATE … WHERE status = 'matching' AND mentor_id IS NULL`; capacity counted under the mentor lock. Never decided in the browser. | matching.test (5 rounds of 3 simultaneous accepts; simultaneous accepts at capacity) |
+| Status changes         | Every transition is one conditional UPDATE from allowed statuses (409 otherwise) plus an event row                                                                                                        | delivery/matching/orders tests                                                       |
+| Prices                 | Computed on the server from the price list; the client's numbers are ignored; commission and free revisions frozen on the order                                                                           | orders.test                                                                          |
+| Order privacy          | Student, assigned mentor, staff, guardians with "view orders"; everyone else 404 (no probing); payout and address shown only to whom they concern                                                         | orders.test                                                                          |
+| Files                  | Signed upload bound to key/size/type/expiry; magic-byte check; EXIF removed; previews watermarked; finals locked for the student side until approval; downloads `nosniff` + sandbox CSP + `no-store`      | orders.test, delivery.test                                                           |
+| Off-platform contact   | Chat/calls only with staff or the other side of a live order; former contacts become read-only; reviews with phone/email/links/messenger names held for moderation                                        | orderchat.test                                                                       |
+| Business rules         | Only super admins change commission and rules; ranges validated; audited                                                                                                                                  | catalog.test                                                                         |
+| Staff actions          | Assign, unassign, cancel, close, dispute decisions, moderation: audited                                                                                                                                   | matching/delivery/orderchat tests                                                    |
+
+Known gaps: payments aren't connected yet (Phase 5). An order stays `awaiting_payment` until then, and refunds from dispute decisions are recorded but not paid out. There are no per-user rate limits on order creation beyond the global limit.
+
 ## Planned controls (Module 17) — tracked in FEATURE_TRACEABILITY_MATRIX.md M17-*

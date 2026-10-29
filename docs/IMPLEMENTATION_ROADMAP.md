@@ -1,16 +1,16 @@
 # Implementation Roadmap
 
-| Phase | Scope                                                                                                                                                                  | Exit gate                                           | Status                             |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------- |
-| 0     | Repository audit, mockup review, inventory, reuse matrix, architecture, traceability                                                                                   | Q1, Q2 answered; Q3–Q13 open (see PROJECT_OVERVIEW) | **Done**                           |
-| 1     | Premium frontend: design tokens, components, all public pages, all 6 role dashboards + guardian, all states, mock adapters, responsive, build + Playwright screenshots | **Your review & approval (STOP)**                   | **Done — approved**                |
-| 2     | WAN Identity integration (OIDC BFF), hub changes H1–H2, roles, profile gates, auth tests                                                                               | Login/role tests green                              | **Done — approved**                |
-| 3     | Chat, calling, notifications/push, ads slots, ICTSpark rule ports (referral, guardian; reviews → Phase 4)                                                              | Integration tests                                   | **Done — waiting for your review** |
-| 4     | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes, order chats, reviews                                 | E2E order journey                                   | Not started                        |
-| 5     | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices                                                              | Ledger balances under tests; no duplicate payout    | Not started                        |
-| 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | Not started                        |
-| 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | Not started                        |
-| 8     | Docker, staging, env validation, backups/restore drill, deploy & rollback guide                                                                                        | **Your production approval**                        | Not started                        |
+| Phase | Scope                                                                                                                                                                  | Exit gate                                           | Status                                                 |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------ |
+| 0     | Repository audit, mockup review, inventory, reuse matrix, architecture, traceability                                                                                   | Q1, Q2 answered; Q3–Q13 open (see PROJECT_OVERVIEW) | **Done**                                               |
+| 1     | Premium frontend: design tokens, components, all public pages, all 6 role dashboards + guardian, all states, mock adapters, responsive, build + Playwright screenshots | **Your review & approval (STOP)**                   | **Done — approved**                                    |
+| 2     | WAN Identity integration (OIDC BFF), hub changes H1–H2, roles, profile gates, auth tests                                                                               | Login/role tests green                              | **Done — approved**                                    |
+| 3     | Chat, calling, notifications/push, ads slots, ICTSpark rule ports (referral, guardian; reviews → Phase 4)                                                              | Integration tests                                   | **Done — waiting for your review**                     |
+| 4     | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes, order chats, reviews                                 | E2E order journey                                   | **Done** (full browser journey after Phase 5 payments) |
+| 5     | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices                                                              | Ledger balances under tests; no duplicate payout    | Not started                                            |
+| 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | Not started                                            |
+| 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | Not started                                            |
+| 8     | Docker, staging, env validation, backups/restore drill, deploy & rollback guide                                                                                        | **Your production approval**                        | Not started                                            |
 
 ## Phase 1 outcome
 
@@ -24,6 +24,20 @@ Done: hub H1 + H2 (+ a hub bug fix), `apps/api` (Fastify 5 + PostgreSQL), real W
 
 Done: notifications (social-module), guardian linking and referral attribution (ICTSpark rules, hardened), support chat (chat-messaging), 1:1 calls (audio-video-calling), ad slots (central-ad-platform SDK). Every module's own test suite ran first. Two small additive upstream changes were made: chat `features.groups` and the ad SDK compiled build. Moved: **reviews to Phase 4** (they need completed orders); **referral rewards to Phase 5** (they need payments). Not done: TURN server, native ringing, email/SMS providers, chat files on S3. Details: `CHAT_AND_COMMUNICATION_INTEGRATION.md`, `ADVERTISING_INTEGRATION.md`, `TESTING_REPORT.md`.
 
-## Next — Phase 4 (marketplace core)
+## Phase 4 outcome
 
-Catalog and services, assignment orders, automatic matching with atomic assignment, files, delivery countdown, revisions, approval, disputes, order conversations (student ↔ assigned mentor through the chat module) and reviews.
+Done (API + web in `AUTH_MODE=wan`):
+
+- Admin-managed catalog, price list and business rules.
+- Mentor profiles.
+- Orders priced by the server, with private files (magic-byte checked, EXIF removed, previews watermarked).
+- Automatic matching: ranked waves of time-limited offers, first valid acceptance wins atomically, capacity enforced, expiry and retry, fallback to the admin queue, manual assignment and reassignment, release, cancellation.
+- Delivery, approval, free and paid revisions, disputes (release, partial or full refund), auto-closure and deadline reminders.
+- Order chats through the chat module, with former contacts made read-only.
+- Reviews with moderation of contact details.
+
+The full browser journey needs payment approval to start matching; it comes with Phase 5. Mentor "services" (per-mentor price lists) are not built: matching uses the platform price list, so any eligible mentor can take any order at one price. Per-mentor pricing would change matching and is left for a decision.
+
+## Next — Phase 5 (payments)
+
+ICTSpark's manual payment flow (method selection, TrxID + proof, accountant verification, duplicate protection) with its known gaps closed (S1–S4). It feeds `matching.startMatching` and `delivery.activatePaidRevision`. Then the ledger, 20/80 commission, mentor earnings, payouts with approval, refunds (cancellations and dispute decisions), reconciliation and invoices.

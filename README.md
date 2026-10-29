@@ -2,7 +2,7 @@
 
 WANBAHJAHKAS ecosystem marketplace for assignments, handwritten practical khata, drawings and diagrams.
 
-**Status:** Phase 3 (existing module integrations) complete, waiting for review. Live with WAN sign-in: notifications, guardian links, referrals, support chat, 1:1 calls and ad slots, on top of Phase 2's sign-in, sessions and roles. Orders, payments and mentor data are still demo data (Phase 4–5). Start with [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
+**Status:** Phase 4 (marketplace core) complete in `AUTH_MODE=wan`: orders, automatic matching, delivery, revisions, disputes, order chats and reviews, on top of sign-in, notifications, guardian links, referrals, chat, calls and ad slots. Payments, ledger and payouts are next (Phase 5); until then an order waits at "awaiting payment".
 
 ## Run it
 

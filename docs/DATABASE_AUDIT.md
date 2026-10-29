@@ -37,4 +37,19 @@ Migrations run in name order, each once, in a transaction (`schema_migrations`).
 | `chat_*` (conversations, members, messages, attachments, reactions, user state)              | chat module (Drizzle, `drizzle.__chat_migrations`)                | support chat                                           | see chat-messaging docs                                                                            |
 | `calls`, `call_active_users`                                                                 | calling module (`PostgresCallStore.migrate()`, create-if-missing) | call state and history                                 | one active call per user                                                                           |
 
+### Added in Phase 4
+
+| Table                                                       | Migration                     | Purpose                                                                 | Key constraints                                               |
+| ----------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `subjects`, `categories`, `price_list`, `platform_settings` | `005_catalog_mentors.sql`     | catalog, prices (minor units), business rules                           | slugs checked; ranges validated in the API                    |
+| `mentor_profiles`                                           | `005`                         | subjects, types of work, levels, availability, capacity                 | capacity 1–20                                                 |
+| `orders`                                                    | `006_orders.sql`              | the order; price, commission rate and free revisions fixed at placement | status check list; mentor ≠ student; courier needs an address |
+| `order_events`                                              | `006`                         | timeline of every change                                                | append-only by the API                                        |
+| `order_offers`                                              | `006`                         | matching offers                                                         | unique (order, mentor)                                        |
+| `order_files`                                               | `006`                         | requirement / preview / final files per round                           | unique storage key                                            |
+| `order_revisions`                                           | `006`, `008`                  | revisions with fee and payment status                                   | PK (order, n)                                                 |
+| `disputes`                                                  | `006`                         | disputes and decisions                                                  | one open per order (partial unique index)                     |
+| `reviews`                                                   | `007_reviews.sql`             | one per order                                                           | rating 1–5                                                    |
+| `order_conversations`                                       | `009_order_conversations.sql` | order → chat conversation                                               | —                                                             |
+
 Module tables are created by the modules themselves on API start, so they follow upgrades of the pinned submodule. The calling tables use `text` ids without a foreign key to `users` (module design). Orders, payments, ledger and the rest arrive with Phases 4–5.
