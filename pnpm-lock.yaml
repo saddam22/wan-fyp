@@ -23,6 +23,12 @@ importers:
       '@amar/social-modules':
         specifier: workspace:*
         version: link:../../modules/social
+      '@chat-module/core':
+        specifier: workspace:*
+        version: link:../../modules/chat/packages/core
+      '@chat-module/server':
+        specifier: workspace:*
+        version: link:../../modules/chat/packages/server
       '@edukhata/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -44,6 +50,9 @@ importers:
       pg:
         specifier: 8.23.1
         version: 8.23.1
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@24.19.2)
       tsx:
         specifier: 4.23.15
         version: 4.23.15
@@ -75,6 +84,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@chat-module/client':
+        specifier: workspace:*
+        version: link:../../modules/chat/packages/client
+      '@chat-module/react':
+        specifier: workspace:*
+        version: link:../../modules/chat/packages/react
       '@edukhata/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -4452,8 +4467,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.5':
     optionalDependencies:
@@ -6914,7 +6928,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
       '@types/node': 24.19.2
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

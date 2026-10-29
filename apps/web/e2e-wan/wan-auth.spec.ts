@@ -284,6 +284,54 @@ test("a ?ref link opened before sign-up credits the referrer at onboarding", asy
   await expect(ap.getByText("A friend joined with your code")).toBeVisible();
 });
 
+test("a student messages EduKhata support in real time; no direct chats between students", async ({
+  browser,
+}) => {
+  const suffix = STUDENT.split(" ")[1]!;
+  const signUpStudent = async (first: string, email: string) => {
+    const c = await browser.newContext();
+    const p = await c.newPage();
+    await registerOnHub(p.request, `${first} ${suffix}`, email);
+    await wanSignIn(p);
+    await p.getByLabel("Institution").fill("Dhaka College");
+    await p.getByLabel("Class / year").selectOption("HSC 2nd year");
+    await p.getByRole("button", { name: "Physics" }).click();
+    await p.getByRole("button", { name: "Finish setup" }).click();
+    await expect(p).toHaveURL(/\/student$/);
+    return p;
+  };
+  const sp = await signUpStudent("Sumaiya", `sumaiya.${run}@example.com`);
+  const supEmail = `support.${run}@example.com`;
+  const up = await signUpStudent("Joya", supEmail);
+  grantRole(supEmail, "supporter");
+  await up.goto("/support-desk/chat");
+  await expect(up.getByTestId("live-chat").getByText("No chats yet")).toBeVisible();
+
+  await sp.goto("/student/messages");
+  const chat = sp.getByTestId("live-chat");
+  await chat.locator(".cm-sidebar__header").getByRole("button", { name: "New chat" }).click();
+  const dialog = sp.getByRole("dialog", { name: "New chat" });
+  // Groups are off, and other students can't be found.
+  await expect(dialog.getByRole("tab", { name: "Group" })).toHaveCount(0);
+  await dialog.getByPlaceholder("Type a name").fill("Sumaiya");
+  await expect(dialog.getByRole("option")).toHaveCount(0);
+  await dialog.getByPlaceholder("Type a name").fill("Joya");
+  await dialog.getByRole("option", { name: new RegExp(`Joya ${suffix}`) }).click();
+  await expect(sp).toHaveURL(/\/student\/messages\?c=/);
+  await chat.locator(".cm-composer textarea").fill("My bKash payment shows pending");
+  await chat.locator(".cm-composer textarea").press("Enter");
+
+  // Arrives at the support desk without a reload, with a notification.
+  const row = up.getByTestId("live-chat").locator(".cm-row", { hasText: `Sumaiya ${suffix}` });
+  await expect(row).toContainText("My bKash payment shows pending");
+  await row.click();
+  await up.getByTestId("live-chat").locator(".cm-composer textarea").fill("Checking it now");
+  await up.getByTestId("live-chat").locator(".cm-composer textarea").press("Enter");
+  await expect(chat.locator(".cm-bubble__text", { hasText: "Checking it now" })).toBeVisible();
+  await up.goto("/support-desk/notifications");
+  await expect(up.getByText(`New message from Sumaiya ${suffix}`)).toBeVisible();
+});
+
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {
   const evil = await request.post("/api/me/onboarding", {
     headers: { origin: "https://evil.example" },

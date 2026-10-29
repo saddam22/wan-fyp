@@ -92,6 +92,7 @@ export const NAV: Record<Area, NavGroup[]> = {
         { label: "Orders", href: "/guardian/orders", icon: "ClipboardList" },
         { label: "Payments", href: "/guardian/payments", icon: "CreditCard" },
         { label: "Notifications", href: "/guardian/notifications", icon: "Bell" },
+        { label: "Support chat", href: "/guardian/messages", icon: "MessageSquare" },
         { label: "Refer & Earn", href: "/guardian/referrals", icon: "Gift" },
         { label: "Privacy & Permissions", href: "/guardian/privacy", icon: "ShieldCheck" },
       ],

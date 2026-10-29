@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 import { homeFor } from "@edukhata/contracts";
 import { getSession } from "@/lib/session";
 
-/** Where each area keeps its conversations. Areas without messaging land on their home. */
+/** Where each area keeps its conversations. Areas without chat (admin, accountant)
+ * land on their home. */
 const INBOX: Record<string, string> = {
   "/student": "/student/messages",
   "/mentor": "/mentor/messages",
-  "/admin": "/admin/messages",
   "/support-desk": "/support-desk/chat",
+  "/guardian": "/guardian/messages",
 };
 
 /** Area-independent link used by chat and missed-call notifications (/messages?c=<id>). */

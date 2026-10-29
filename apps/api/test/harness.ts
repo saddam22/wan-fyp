@@ -2,6 +2,9 @@
  * Shared API test setup: fresh schema in the *test* database, a stand-in WAN hub,
  * and browser-like clients that sign in through the real OIDC flow.
  */
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, expect } from "vitest";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { buildApp, type AppOptions } from "../src/app.ts";
@@ -40,6 +43,7 @@ export function useHarness(extra: Partial<AppOptions> = {}): Ctx {
       WAN_HUB_URL: ctx.hub.url,
       EDK_CLIENT_SECRET: secret,
       HUB_CHECK_INTERVAL_SEC: "0",
+      CHAT_UPLOAD_DIR: mkdtempSync(join(tmpdir(), "edk-chat-")),
     } as NodeJS.ProcessEnv);
     ctx.app = await buildApp({
       db: ctx.db,

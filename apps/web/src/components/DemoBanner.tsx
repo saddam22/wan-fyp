@@ -1,4 +1,5 @@
 import { FlaskConical } from "lucide-react";
+import { authMode } from "@/lib/auth-mode";
 import { getT } from "@/lib/i18n/server";
 import { DEMO_MODE } from "@/lib/site";
 
@@ -11,7 +12,7 @@ export async function DemoBanner() {
       className="bg-amber-400 px-4 py-1.5 text-center text-xs font-semibold text-amber-950"
     >
       <FlaskConical size={13} className="mr-1 inline -translate-y-px" />
-      {t.demo.banner}
+      {authMode() === "wan" ? t.demo.bannerLive : t.demo.banner}
     </div>
   );
 }

@@ -25,12 +25,17 @@ export interface Config {
    * be reachable from the internet directly.
    */
   trustProxy: string;
+  /** HMAC secret for chat tokens, signed upload URLs and attachment URLs (32+ chars). */
+  chatSecret: string;
+  /** Where chat files are stored on disk (single API instance; see chat/storage.ts). */
+  chatUploadDir: string;
   /** Web Push (VAPID). Null = push off; in-app notifications still work. */
   vapid: { publicKey: string; privateKey: string; subject: string } | null;
 }
 
 /** Same development default as the hub's DEV_EDK_SECRET (server/src/config.ts there). */
 const DEV_CLIENT_SECRET = "dev-only-edukhata-secret-change-me-0123";
+const DEV_CHAT_SECRET = "dev-only-edukhata-chat-secret-change-me-0123";
 
 const trim = (u: string) => u.replace(/\/+$/, "");
 
@@ -42,6 +47,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const hubUrl = trim(env.WAN_HUB_URL ?? "http://localhost:4100");
   const clientSecret = env.EDK_CLIENT_SECRET ?? (production ? "" : DEV_CLIENT_SECRET);
   if (clientSecret.length < 32) throw new Error("EDK_CLIENT_SECRET must be 32+ characters");
+  const chatSecret = env.CHAT_SECRET || (production ? "" : DEV_CHAT_SECRET);
+  if (chatSecret.length < 32) throw new Error("CHAT_SECRET must be 32+ characters");
   if (production && (!webUrl.startsWith("https://") || !hubUrl.startsWith("https://"))) {
     throw new Error("WEB_URL and WAN_HUB_URL must use https in production");
   }
@@ -58,6 +65,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sessionTtlMs: 7 * 24 * 3600_000,
     sessionIdleMs: 12 * 3600_000,
     hubCheckIntervalMs: Number(env.HUB_CHECK_INTERVAL_SEC ?? 600) * 1000,
+    chatSecret,
+    chatUploadDir: env.CHAT_UPLOAD_DIR ?? ".data/chat-uploads",
     trustProxy: env.TRUST_PROXY ?? "127.0.0.1,::1,::ffff:127.0.0.1",
     vapid:
       env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT

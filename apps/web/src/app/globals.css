@@ -200,3 +200,11 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* WAN chat module, in the area's accent colour (the module's defaults are green). */
+.edk-chat {
+  --cm-primary: var(--color-accent, var(--color-brand-600));
+  --cm-primary-dark: var(--color-brand);
+  --cm-primary-soft: var(--color-accent-50, var(--color-brand-50));
+  --cm-font: inherit;
+}

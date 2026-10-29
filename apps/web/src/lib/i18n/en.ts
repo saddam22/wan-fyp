@@ -3,6 +3,8 @@ export const en = {
   brand: { tagline: "Assignment • Practical • Learning • Global" },
   demo: {
     banner: "Demo preview — sample data only, no backend connected. Actions are not saved.",
+    bannerLive:
+      "Preview — orders, payments and mentors are still sample data. WAN sign-in, notifications, guardian links, referrals and support chat are live.",
     notSaved: "Demo only — not saved. This action is wired to the backend in a later phase.",
   },
   header: {

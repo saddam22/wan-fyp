@@ -1,9 +1,18 @@
+import { LiveMessages } from "@/components/dash/MessagesPage";
+import { authMode } from "@/lib/auth-mode";
 import { Suspense } from "react";
 import { fixtures } from "@edukhata/contracts";
 import { ChatView } from "@/components/dash/Chat";
 import { PageHeader, Skeleton } from "@/components/ui";
 
-export default function SupportChat() {
+export default async function SupportChat() {
+  if (authMode() === "wan")
+    return (
+      <>
+        <PageHeader title="Messages" sub="Conversations with students, mentors and guardians." />
+        <LiveMessages />
+      </>
+    );
   const convs = [
     {
       id: "s1",

@@ -12,10 +12,14 @@ import { meRoutes } from "./routes/me.ts";
 import { notificationRoutes } from "./routes/notifications.ts";
 import { referralRoutes } from "./routes/referrals.ts";
 import { createNotifications } from "./social/notifications.ts";
+import { createEdukhataChat } from "./chat/module.ts";
+import { chatRoutes } from "./routes/chat.ts";
 
-export interface AppOptions extends Omit<Deps, "notifications"> {
+export interface AppOptions extends Omit<Deps, "notifications" | "chat"> {
   /** Defaults to the social-module notification service on `db`. */
   notifications?: Deps["notifications"];
+  /** Defaults to the WAN chat module on `db`. */
+  chat?: Deps["chat"];
   logger?: boolean | object;
 }
 
@@ -30,15 +34,19 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     trustProxy: config.trustProxy,
     bodyLimit: 64 * 1024,
   });
+  const notifications =
+    opts.notifications ??
+    createNotifications(opts.db, config, {
+      warn: (msg, meta) => app.log.warn(meta ?? {}, msg),
+      error: (msg, meta) => app.log.error(meta ?? {}, msg),
+    });
   const deps: Deps = {
     ...opts,
-    notifications:
-      opts.notifications ??
-      createNotifications(opts.db, config, {
-        warn: (msg, meta) => app.log.warn(meta ?? {}, msg),
-        error: (msg, meta) => app.log.error(meta ?? {}, msg),
-      }),
+    notifications,
+    chat: opts.chat ?? createEdukhataChat(opts.db, config, notifications, app.log),
   };
+  // The chat module keeps its own migration history (drizzle.__chat_migrations).
+  await deps.chat.chat.migrate();
   await app.register(cookie);
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(rateLimit, { global: true, max: 600, timeWindow: "1 minute" });
@@ -76,6 +84,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(notificationRoutes, deps);
   await app.register(guardianRoutes, deps);
   await app.register(referralRoutes, deps);
+  await app.register(chatRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

@@ -8,3 +8,6 @@ dist/
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# Local chat uploads (apps/api CHAT_UPLOAD_DIR)
+.data/
