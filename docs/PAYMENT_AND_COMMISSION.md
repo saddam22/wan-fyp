@@ -45,16 +45,16 @@ Amounts are signed integer paisa: positive is a debit, negative is a credit. Thr
 - Entries are append-only (update and delete are refused).
 - `idempotency_key` is unique, so a retried step can't post twice.
 
-| Event                    | Debit                                                                                               | Credit                                      |
-| ------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Payment approved         | `cash:<account>`                                                                                    | `escrow:order:<id>`                         |
-| Order approved (earned)  | `escrow:order:<id>`                                                                                 | `revenue:commission`, `mentor:<id>:pending` |
-| Order closed (available) | `mentor:<id>:pending`                                                                               | `mentor:<id>:available`                     |
-| Payout requested         | `mentor:<id>:available`                                                                             | `payouts:payable`                           |
-| Payout rejected          | `payouts:payable`                                                                                   | `mentor:<id>:available`                     |
-| Payout sent              | `payouts:payable`                                                                                   | `cash:<account>`                            |
-| Refund decided           | `escrow:order:<id>` first; then `mentor:<id>:pending` and `revenue:commission` in the order's split | `refunds:payable`                           |
-| Refund sent              | `refunds:payable`                                                                                   | `cash:<account>`                            |
+| Event                               | Debit                                                                                               | Credit                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Payment approved                    | `cash:<account>`                                                                                    | `escrow:order:<id>`                         |
+| Order approved (earned)             | `escrow:order:<id>`                                                                                 | `revenue:commission`, `mentor:<id>:pending` |
+| Both confirmed → closed (available) | `mentor:<id>:pending`                                                                               | `mentor:<id>:available`                     |
+| Payout requested                    | `mentor:<id>:available`                                                                             | `payouts:payable`                           |
+| Payout rejected                     | `payouts:payable`                                                                                   | `mentor:<id>:available`                     |
+| Payout sent                         | `payouts:payable`                                                                                   | `cash:<account>`                            |
+| Refund decided                      | `escrow:order:<id>` first; then `mentor:<id>:pending` and `revenue:commission` in the order's split | `refunds:payable`                           |
+| Refund sent                         | `refunds:payable`                                                                                   | `cash:<account>`                            |
 
 **Commission.** `commission_rate` defaults to **0.20** and is a configurable setting. It is **copied onto the order** when the order is placed, so a later change never affects existing orders. The mentor's share is `floor(price × (1 − rate))`, and the commission is the remainder, so the two always add up to the price.
 
