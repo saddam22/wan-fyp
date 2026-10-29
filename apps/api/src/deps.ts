@@ -3,6 +3,7 @@ import type { EdukhataChat } from "./chat/module.ts";
 import type { Config } from "./config.ts";
 import type { Db } from "./db.ts";
 import type { Hub } from "./lib/hub.ts";
+import type { Matching } from "./market/matching.ts";
 import type { Notifications } from "./social/notifications.ts";
 
 export interface Deps {
@@ -12,4 +13,5 @@ export interface Deps {
   notifications: Notifications;
   chat: EdukhataChat;
   calling: EdukhataCalling;
+  matching: Matching;
 }

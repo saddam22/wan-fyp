@@ -66,9 +66,15 @@ export function useHarness(extra: Partial<AppOptions> = {}): Ctx {
 }
 
 /** A browser talking to the API through the web origin (cookies kept, Origin sent on writes). */
+let browsers = 0;
 export class Browser {
   cookies = new Map<string, string>();
-  constructor(private ctx: Ctx) {}
+  /** Each browser has its own address (rate limits are per client, as in real use). */
+  readonly ip: string;
+  constructor(private ctx: Ctx) {
+    const n = ++browsers;
+    this.ip = `10.${(n >> 16) & 255}.${(n >> 8) & 255}.${n & 255}`;
+  }
   async req(
     method: string,
     url: string,
@@ -78,6 +84,7 @@ export class Browser {
     const res = await this.ctx.app.inject({
       method: method as "GET",
       url,
+      remoteAddress: this.ip,
       headers: {
         cookie: [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; "),
         ...(method !== "GET" ? { origin: WEB } : {}),

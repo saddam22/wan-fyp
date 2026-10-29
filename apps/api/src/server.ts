@@ -63,6 +63,12 @@ if (notifications.pushEnabled) {
     15_000,
   ).unref();
 }
+// Matching: expire offers and send the next wave (single API instance).
+const matchingSweep = setInterval(
+  () => void app.edkDeps.matching.sweep().catch((e: unknown) => console.error("[matching]", e)),
+  30_000,
+);
+matchingSweep.unref();
 // Unsent chat uploads older than a day.
 setInterval(
   () => void chat.chat.service.purgeStaleUploads().catch((e) => console.error("[chat]", e)),

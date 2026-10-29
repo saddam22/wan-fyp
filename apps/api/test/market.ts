@@ -75,3 +75,14 @@ export async function upload(
 }
 
 export const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+
+let subjects = 0;
+/** A subject only this test uses, so mentors from other tests aren't candidates. */
+export async function freshSubject(ctx: Ctx): Promise<string> {
+  const id = `t-subject-${++subjects}-${Date.now() % 100000}`;
+  await ctx.db.query(
+    "insert into subjects (id, name, name_bn, levels) values ($1, $1, $1, '{hsc}')",
+    [id],
+  );
+  return id;
+}

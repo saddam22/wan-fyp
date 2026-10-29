@@ -14,12 +14,21 @@ import { referralRoutes } from "./routes/referrals.ts";
 import { createNotifications } from "./social/notifications.ts";
 import { createEdukhataCalling } from "./calling/module.ts";
 import { createEdukhataChat } from "./chat/module.ts";
+import { createMatching } from "./market/matching.ts";
+import { matchingRoutes } from "./routes/matching.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { chatRoutes } from "./routes/chat.ts";
 import { mentorRoutes } from "./routes/mentors.ts";
 import { orderRoutes } from "./routes/orders.ts";
 
-export interface AppOptions extends Omit<Deps, "notifications" | "chat" | "calling"> {
+declare module "fastify" {
+  interface FastifyInstance {
+    /** Module handles (matching sweep in server.ts, gateways in tests). */
+    edkDeps: Deps;
+  }
+}
+
+export interface AppOptions extends Omit<Deps, "notifications" | "chat" | "calling" | "matching"> {
   /** Defaults to the social-module notification service on `db`. */
   notifications?: Deps["notifications"];
   /** Defaults to the WAN chat module on `db`. */
@@ -52,10 +61,10 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     notifications,
     chat,
     calling: opts.calling ?? createEdukhataCalling(opts.db, chat, notifications, app.log),
+    matching: createMatching(opts.db, notifications, app.log),
   };
   // The chat module keeps its own migration history (drizzle.__chat_migrations); the
   // calling module creates its two tables if missing (calls, call_active_users).
-  // Tests reach the module handles (e.g. to attach the call gateway).
   app.decorate("edkDeps", deps);
   await deps.chat.chat.migrate();
   await deps.calling.store.migrate();
@@ -100,6 +109,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(catalogRoutes, deps);
   await app.register(mentorRoutes, deps);
   await app.register(orderRoutes, deps);
+  await app.register(matchingRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });
