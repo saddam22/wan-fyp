@@ -616,7 +616,10 @@ test("verification, coupons and the blog: reviewed by staff, shown honestly", as
     .click();
   await ap.getByRole("button", { name: "Publish" }).click();
   await expect(
-    ap.getByRole("row").filter({ hasText: `Neat amoeba drawings ${run}` }).getByText("Published"),
+    ap
+      .getByRole("row")
+      .filter({ hasText: `Neat amoeba drawings ${run}` })
+      .getByText("Published"),
   ).toBeVisible();
   await p.goto("/blog");
   await p

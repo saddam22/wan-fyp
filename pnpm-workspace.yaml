@@ -10,3 +10,7 @@ packages:
 onlyBuiltDependencies:
   - esbuild
   - sharp
+
+# One fastify for EduKhata and the chat module (GHSA-389g-gv7q-r4x8 fixed in 5.12.6).
+overrides:
+  fastify: 5.12.6
