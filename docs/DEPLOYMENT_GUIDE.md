@@ -49,6 +49,8 @@ Browsers talk only to the web origin. `/api/*` is proxied to the API, including 
 5. Set up the money side: in `/accountant/accounts`, add the receiving bKash, Nagad, Rocket and bank accounts. Grant `accountant` to at least **two** people, because refunds and payouts need two of them.
 6. Smoke test (see the checklist below).
 
+The web image bakes in `API_INTERNAL_URL=http://api:4200`, so the API service must be reachable as `api` (the compose service name). Rebuild the web image if you change it.
+
 Behind a proxy that intercepts TLS (a corporate network), pass its CA to the build: `docker build --secret id=ca,src=ca.crt …`. It is used only while downloading and is never stored in an image layer.
 
 ## Smoke test after every deploy

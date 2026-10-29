@@ -1,5 +1,19 @@
 # Testing Report
 
+## Phase 8 — staging packaging (2026-10-29)
+
+| Check                                                | Result                                                                                                                                                                                                                                   |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm check` (format, build, lint, typecheck, tests) | pass. API 96 (+2 config tests); the performance check is opt-in                                                                                                                                                                          |
+| Docker images (`--target api`, `--target web`)       | both built in this session. Docker Hub refused anonymous pulls of `node` (429), so the build used a local base made from `postgres:16.11-bookworm` plus Node 22.22.0. The staging build uses `node:22.22.0-bookworm-slim` (`NODE_IMAGE`) |
+| Containers: PostgreSQL + API + web on one network    | API `/health` ok; the 13 migrations applied at start; web `/` 200; `/api/catalog` proxied; `/api/admin/users` 401; cross-site POST 403; `/mentors` 200; both containers run as `node`; logs without query strings                        |
+| Backup → restore drill (`scripts/backup-drill.sh`)   | passed on the e2e database (202 users, 67 ledger lines; ledger still refuses deletes) and the test database (1,301 users, 10,000 orders); restore about 1 s each                                                                         |
+| `restore.sh` on a non-empty database                 | refused, as designed                                                                                                                                                                                                                     |
+
+Bug found by the image build: after the Phase 7 `fastify` upgrade the chat module still used 5.12.5, so the API typecheck failed. That commit had been pushed without re-running the typecheck. Fixed in the next commit with a workspace override, and `pnpm check` now runs before every push.
+
+Not done here: Caddy/TLS with a real domain, the WAN Identity Hub in the same stack, a deploy to a staging server (none is available to this session).
+
 ## Phase 7 — security and performance (2026-10-29)
 
 | Suite                                                                                                                                         | Result                                                                                                                                                                                                 |

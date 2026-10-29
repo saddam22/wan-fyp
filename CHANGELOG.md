@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-29 — Phase 8: staging packaging (no deployment)
+
+- Dockerfile (api, web), staging compose with PostgreSQL, internal-only API and Caddy HTTPS; `.env.staging.example`.
+- `scripts/check-env.mjs` and stricter production config; config tests.
+- Backup, restore (refuses non-empty targets) and a restore drill (passed).
+- Deployment guide with smoke test and rollback. Images built and smoke-tested locally; nothing deployed.
+- Fix: one `fastify` version across the workspace (the Phase 7 upgrade had broken the API typecheck).
+
 ## 2026-10-29 — Phase 7: security hardening and QA
 
 - Access sweep test over every API route (166): anonymous, student, mentor, accountant, admin, cross-origin, unknown ids; rate-limit tests.

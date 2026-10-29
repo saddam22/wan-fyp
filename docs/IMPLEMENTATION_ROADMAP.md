@@ -1,16 +1,16 @@
 # Implementation Roadmap
 
-| Phase | Scope                                                                                                                                                                  | Exit gate                                           | Status                             |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------- |
-| 0     | Repository audit, mockup review, inventory, reuse matrix, architecture, traceability                                                                                   | Q1, Q2 answered; Q3–Q13 open (see PROJECT_OVERVIEW) | **Done**                           |
-| 1     | Premium frontend: design tokens, components, all public pages, all 6 role dashboards + guardian, all states, mock adapters, responsive, build + Playwright screenshots | **Your review & approval (STOP)**                   | **Done — approved**                |
-| 2     | WAN Identity integration (OIDC BFF), hub changes H1–H2, roles, profile gates, auth tests                                                                               | Login/role tests green                              | **Done — approved**                |
-| 3     | Chat, calling, notifications/push, ads slots, ICTSpark rule ports (referral, guardian; reviews → Phase 4)                                                              | Integration tests                                   | **Done — waiting for your review** |
-| 4     | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes, order chats, reviews                                 | E2E order journey                                   | **Done**                           |
-| 5     | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices                                                              | Ledger balances under tests; no duplicate payout    | **Done**                           |
-| 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | **Done**                           |
-| 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | **Done**                           |
-| 8     | Docker, staging, env validation, backups/restore drill, deploy & rollback guide                                                                                        | **Your production approval**                        | Not started                        |
+| Phase | Scope                                                                                                                                                                  | Exit gate                                           | Status                                                                    |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------- |
+| 0     | Repository audit, mockup review, inventory, reuse matrix, architecture, traceability                                                                                   | Q1, Q2 answered; Q3–Q13 open (see PROJECT_OVERVIEW) | **Done**                                                                  |
+| 1     | Premium frontend: design tokens, components, all public pages, all 6 role dashboards + guardian, all states, mock adapters, responsive, build + Playwright screenshots | **Your review & approval (STOP)**                   | **Done — approved**                                                       |
+| 2     | WAN Identity integration (OIDC BFF), hub changes H1–H2, roles, profile gates, auth tests                                                                               | Login/role tests green                              | **Done — approved**                                                       |
+| 3     | Chat, calling, notifications/push, ads slots, ICTSpark rule ports (referral, guardian; reviews → Phase 4)                                                              | Integration tests                                   | **Done — waiting for your review**                                        |
+| 4     | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes, order chats, reviews                                 | E2E order journey                                   | **Done**                                                                  |
+| 5     | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices                                                              | Ledger balances under tests; no duplicate payout    | **Done**                                                                  |
+| 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | **Done**                                                                  |
+| 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | **Done**                                                                  |
+| 8     | Docker, staging, env validation, backups/restore drill, deploy & rollback guide                                                                                        | **Your production approval**                        | **Packaged — waiting for a staging host; production needs your approval** |
 
 ## Phase 1 outcome
 
@@ -85,6 +85,24 @@ The production checklist is in `SECURITY_AUDIT.md`. Open blockers for production
 - Malware scanning of uploads (recommended).
 - A third-party penetration test (recommended).
 
-## Next — Phase 8
+## Phase 8 outcome
 
-Docker images and compose, environment validation, backup and restore scripts with a drill, a staging configuration, and the deploy and rollback guide. **No production deployment without the owner's approval.**
+Done:
+
+- Docker images for the API and the web app, built and run together with PostgreSQL in this session. The smoke test passed.
+- The staging compose file: the API sits on an internal network, Caddy serves HTTPS.
+- Environment validation, in a script and in the API's own config.
+- Backup, restore and a restore drill. The drill passed.
+- A deploy, smoke-test and rollback guide (`DEPLOYMENT_GUIDE.md`).
+
+Not done:
+
+- An actual staging deployment. No server or domain is available to this session. The steps in the guide are ready to run.
+- **Production is not deployed and won't be without your explicit approval.**
+
+Before production:
+
+- Hub SMS/email providers (S6).
+- A TURN server.
+- Off-site backups.
+- The open decisions in `PROJECT_OVERVIEW.md`, especially Q5 (holding funds).
