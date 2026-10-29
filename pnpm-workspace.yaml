@@ -1,6 +1,11 @@
 packages:
   - apps/*
   - packages/*
+  # Reused WANBAHJAHKAS modules (git submodules pinned to tested commits; see docs/MODULE_INTEGRATION.md)
+  - modules/chat/packages/*
+  - modules/calling/packages/*
+  - modules/social
+  - modules/ads/packages/sdk
 
 onlyBuiltDependencies:
   - esbuild

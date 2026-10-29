@@ -127,6 +127,18 @@ test("WAN sign-in → onboarding → role-gated dashboards → admin roles → h
   await expect(sp.getByTestId("forbidden")).toHaveCount(0);
   await expect(sp.getByText("Mentor Dashboard").first()).toBeVisible();
 
+  // Both events reached the student as real notifications (WAN social module).
+  await expect(sp.getByTestId("bell-dot")).toBeVisible();
+  await sp.getByRole("button", { name: "Notifications" }).click();
+  await expect(sp.getByText("Your EduKhata roles changed")).toBeVisible();
+  await expect(sp.getByTestId("bell-dot")).toHaveCount(0);
+  await sp.goto("/notifications");
+  await expect(sp).toHaveURL(/\/mentor\/notifications$/);
+  const inbox = sp.getByTestId("live-notifications");
+  await expect(inbox.getByText("Welcome to EduKhata")).toBeVisible();
+  await inbox.getByText("Welcome to EduKhata").click();
+  await expect(sp).toHaveURL(/\/student$/);
+
   // The audit log (super admin only) records the change.
   await ap.goto("/admin/audit");
   await expect(ap.getByText("user.roles").first()).toBeVisible();

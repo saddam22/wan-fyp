@@ -2,13 +2,18 @@ import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance } from "fastify";
+import { SocialError } from "@amar/social-modules";
 import type { Deps } from "./deps.ts";
 import { ApiError } from "./lib/errors.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { meRoutes } from "./routes/me.ts";
+import { notificationRoutes } from "./routes/notifications.ts";
+import { createNotifications } from "./social/notifications.ts";
 
-export interface AppOptions extends Deps {
+export interface AppOptions extends Omit<Deps, "notifications"> {
+  /** Defaults to the social-module notification service on `db`. */
+  notifications?: Deps["notifications"];
   logger?: boolean | object;
 }
 
@@ -23,12 +28,29 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     trustProxy: config.trustProxy,
     bodyLimit: 64 * 1024,
   });
+  const deps: Deps = {
+    ...opts,
+    notifications:
+      opts.notifications ??
+      createNotifications(opts.db, config, {
+        warn: (msg, meta) => app.log.warn(meta ?? {}, msg),
+        error: (msg, meta) => app.log.error(meta ?? {}, msg),
+      }),
+  };
   await app.register(cookie);
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(rateLimit, { global: true, max: 600, timeWindow: "1 minute" });
 
   app.setErrorHandler((error, req, reply) => {
     if (error instanceof ApiError) return reply.code(error.status).send(error.toJSON());
+    if (error instanceof SocialError) {
+      // One validation shape across the API (the module itself uses 422).
+      if (error.code === "VALIDATION")
+        return reply.code(400).send(new ApiError("validation", error.message).toJSON());
+      return reply
+        .code(error.httpStatus)
+        .send({ error: { code: error.code.toLowerCase(), message: error.message } });
+    }
     const e = error as { statusCode?: number; message: string };
     if (e.statusCode === 429)
       return reply.code(429).send(new ApiError("rate_limited", "Too many requests").toJSON());
@@ -46,9 +68,10 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   });
 
   app.get("/health", async () => ({ ok: true }));
-  await app.register(authRoutes, opts);
-  await app.register(meRoutes, opts);
-  await app.register(adminRoutes, opts);
+  await app.register(authRoutes, deps);
+  await app.register(meRoutes, deps);
+  await app.register(adminRoutes, deps);
+  await app.register(notificationRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

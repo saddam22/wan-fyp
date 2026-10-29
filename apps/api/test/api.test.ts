@@ -1,119 +1,34 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { FastifyInstance, LightMyRequestResponse } from "fastify";
-import { buildApp } from "../src/app.ts";
-import { loadConfig, type Config } from "../src/config.ts";
-import { createDb, migrate, type Db } from "../src/db.ts";
-import { createHub } from "../src/lib/hub.ts";
-import { startFakeHub, type FakeHub } from "./fakeHub.ts";
+import { describe, expect, it } from "vitest";
+import {
+  Browser as B,
+  grant as grantAs,
+  signIn as signInAs,
+  useHarness,
+  userId as uid,
+  WEB,
+} from "./harness.ts";
 
-const TEST_DB =
-  process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/edukhata_test";
-const WEB = "http://localhost:3200";
-
-let db: Db;
-let hub: FakeHub;
-let config: Config;
-let app: FastifyInstance;
-
-beforeAll(async () => {
-  if (!/test/.test(new URL(TEST_DB).pathname))
-    throw new Error("TEST_DATABASE_URL must point at a *test* database");
-  db = createDb(TEST_DB);
-  await db.query("drop schema public cascade; create schema public;");
-  await migrate(db);
-  const secret = "test-secret-0123456789-0123456789-abc";
-  hub = await startFakeHub("edukhata", secret);
-  config = loadConfig({
-    DATABASE_URL: TEST_DB,
-    WEB_URL: WEB,
-    WAN_HUB_URL: hub.url,
-    EDK_CLIENT_SECRET: secret,
-    HUB_CHECK_INTERVAL_SEC: "0",
-  } as NodeJS.ProcessEnv);
-  app = await buildApp({ db, config, hub: createHub(config) });
-  await app.ready();
-});
-
-afterAll(async () => {
-  await app.close();
-  await hub.close();
-  await db.end();
-});
-
-beforeEach(() => {
-  hub.down = false;
-});
-
-/** A browser talking to the API through the web origin (cookies kept, Origin sent on writes). */
-class Browser {
-  cookies = new Map<string, string>();
-  async req(
-    method: string,
-    url: string,
-    body?: object,
-    headers: Record<string, string> = {},
-  ): Promise<LightMyRequestResponse> {
-    const res = await app.inject({
-      method: method as "GET",
-      url,
-      headers: {
-        cookie: [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; "),
-        ...(method !== "GET" ? { origin: WEB } : {}),
-        ...headers,
-      },
-      ...(body ? { payload: body } : {}),
-    });
-    for (const c of ([] as string[]).concat(res.headers["set-cookie"] ?? [])) {
-      const [pair] = c.split(";");
-      const [k, ...v] = pair!.split("=");
-      if (v.join("=") === "" || /Max-Age=0|Expires=Thu, 01 Jan 1970/i.test(c))
-        this.cookies.delete(k!);
-      else this.cookies.set(k!, v.join("="));
-    }
-    return res;
+const ctx = useHarness();
+const signIn = (name?: string, next?: string) => signInAs(ctx, name, next);
+class Browser extends B {
+  constructor() {
+    super(ctx);
   }
-  get = (u: string) => this.req("GET", u);
-  post = (u: string, b?: object) => this.req("POST", u, b ?? {});
-  put = (u: string, b: object) => this.req("PUT", u, b);
 }
 
-let n = 0;
-/** Full WAN sign-in through the API and the (fake) hub. */
-async function signIn(name = `User ${++n}`, next?: string) {
-  const b = new Browser();
-  const sub = crypto.randomUUID();
-  const login = await b.get(`/auth/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
-  expect(login.statusCode).toBe(302);
-  const q = hub.authorize(String(login.headers.location), {
-    sub,
-    name,
-    email: `${sub.slice(0, 8)}@example.com`,
-  });
-  const cb = await b.get(`/auth/callback?${new URLSearchParams(q)}`);
-  return { b, sub, cb };
-}
-
-async function userId(sub: string) {
-  return (await db.query("select id from users where wan_sub = $1", [sub])).rows[0].id as string;
-}
-async function grant(sub: string, ...roles: string[]) {
-  for (const r of roles)
-    await db.query(
-      "insert into user_roles (user_id, role) values ($1, $2) on conflict do nothing",
-      [await userId(sub), r],
-    );
-}
+const userId = (sub: string) => uid(ctx, sub);
+const grant = (sub: string, ...roles: string[]) => grantAs(ctx, sub, ...roles);
 
 describe("WAN sign-in", () => {
   it("redirects to the hub with PKCE S256, state, nonce and the registered callback", async () => {
     const res = await new Browser().get("/auth/login?next=/student/orders");
     const u = new URL(String(res.headers.location));
-    expect(u.origin + u.pathname).toBe(`${hub.issuer}/auth`);
+    expect(u.origin + u.pathname).toBe(`${ctx.hub.issuer}/auth`);
     expect(u.searchParams.get("code_challenge_method")).toBe("S256");
     expect(u.searchParams.get("redirect_uri")).toBe(`${WEB}/api/auth/callback`);
     expect(u.searchParams.get("scope")).toBe("openid profile email phone");
     const t = (
-      await db.query("select next_path from auth_transactions where state = $1", [
+      await ctx.db.query("select next_path from auth_transactions where state = $1", [
         u.searchParams.get("state"),
       ])
     ).rows[0];
@@ -130,7 +45,7 @@ describe("WAN sign-in", () => {
       const res = await new Browser().get(`/auth/login?next=${encodeURIComponent(next)}`);
       const state = new URL(String(res.headers.location)).searchParams.get("state");
       expect(
-        (await db.query("select next_path from auth_transactions where state = $1", [state]))
+        (await ctx.db.query("select next_path from auth_transactions where state = $1", [state]))
           .rows[0].next_path,
       ).toBe("");
     }
@@ -149,7 +64,7 @@ describe("WAN sign-in", () => {
     expect(me.roles).toEqual([]);
     expect(me.onboardingComplete).toBe(false);
     const stored = (
-      await db.query("select token_hash from sessions where user_id = $1", [await userId(sub)])
+      await ctx.db.query("select token_hash from sessions where user_id = $1", [await userId(sub)])
     ).rows[0];
     expect(stored.token_hash).not.toBe(b.cookies.get("ek_sid"));
   });
@@ -157,7 +72,7 @@ describe("WAN sign-in", () => {
   it("refuses a replayed or unknown state, a wrong nonce, and passes on hub refusals", async () => {
     const b = new Browser();
     const login = await b.get("/auth/login");
-    const q = hub.authorize(String(login.headers.location), {
+    const q = ctx.hub.authorize(String(login.headers.location), {
       sub: crypto.randomUUID(),
       name: "X",
     });
@@ -174,7 +89,7 @@ describe("WAN sign-in", () => {
 
     const b2 = new Browser();
     const login2 = await b2.get("/auth/login");
-    const bad = hub.authorize(
+    const bad = ctx.hub.authorize(
       String(login2.headers.location),
       { sub: crypto.randomUUID(), name: "Y" },
       { nonce: "attacker" },
@@ -192,7 +107,10 @@ describe("WAN sign-in", () => {
     await grant(first.sub, "mentor");
     const b = new Browser();
     const login = await b.get("/auth/login");
-    const q = hub.authorize(String(login.headers.location), { sub: first.sub, name: "Returning" });
+    const q = ctx.hub.authorize(String(login.headers.location), {
+      sub: first.sub,
+      name: "Returning",
+    });
     expect((await b.get(`/auth/callback?${new URLSearchParams(q)}`)).headers.location).toBe(
       "/mentor",
     );
@@ -202,7 +120,7 @@ describe("WAN sign-in", () => {
     const { b } = await signIn();
     expect((await b.post("/auth/logout")).statusCode).toBe(200);
     expect(b.cookies.has("ek_sid")).toBe(false);
-    expect((await app.inject({ url: "/me" })).statusCode).toBe(401);
+    expect((await ctx.app.inject({ url: "/me" })).statusCode).toBe(401);
   });
 });
 
@@ -279,15 +197,16 @@ describe("roles and suspension (admin)", () => {
     // The target's next request sees the new role.
     expect((await target.b.get("/me")).json().roles).toEqual(["accountant", "mentor"]);
     const audit = (
-      await db.query("select details from audit_log where action = 'user.roles' and target = $1", [
-        tid,
-      ])
+      await ctx.db.query(
+        "select details from audit_log where action = 'user.roles' and target = $1",
+        [tid],
+      )
     ).rows;
     expect(audit.length).toBe(2);
   });
 
   it("keeps at least one super admin and nobody demotes themselves", async () => {
-    await db.query("delete from user_roles where role = 'super_admin'");
+    await ctx.db.query("delete from user_roles where role = 'super_admin'");
     const sup = await signIn("Only Super");
     await grant(sup.sub, "super_admin");
     const self = await userId(sup.sub);
@@ -299,7 +218,7 @@ describe("roles and suspension (admin)", () => {
   });
 
   it("concurrent removals can't remove the last two super admins", async () => {
-    await db.query("delete from user_roles where role = 'super_admin'");
+    await ctx.db.query("delete from user_roles where role = 'super_admin'");
     const a = await signIn("Super A");
     const b = await signIn("Super B");
     await grant(a.sub, "super_admin");
@@ -311,7 +230,7 @@ describe("roles and suspension (admin)", () => {
     // The second request sees, under the lock, that its actor is no longer a super admin.
     expect([ra.statusCode, rb.statusCode].sort()).toEqual([200, 403]);
     expect(
-      (await db.query("select count(*)::int as n from user_roles where role = 'super_admin'"))
+      (await ctx.db.query("select count(*)::int as n from user_roles where role = 'super_admin'"))
         .rows[0].n,
     ).toBe(1);
   });
@@ -329,7 +248,10 @@ describe("roles and suspension (admin)", () => {
     // Signing in again is refused while suspended.
     const b = new Browser();
     const login = await b.get("/auth/login");
-    const q = hub.authorize(String(login.headers.location), { sub: victim.sub, name: "Spammer" });
+    const q = ctx.hub.authorize(String(login.headers.location), {
+      sub: victim.sub,
+      name: "Spammer",
+    });
     expect((await b.get(`/auth/callback?${new URLSearchParams(q)}`)).headers.location).toBe(
       "/access-request?reason=suspended",
     );
@@ -351,7 +273,7 @@ describe("hub entitlement", () => {
   it("a user the hub suspends for EduKhata loses the session at the next check", async () => {
     const { b, sub } = await signIn();
     expect((await b.get("/me")).statusCode).toBe(200);
-    hub.entitlements.set(sub, "suspended");
+    ctx.hub.entitlements.set(sub, "suspended");
     const res = await b.get("/me");
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe("platform_access_denied");
@@ -360,14 +282,14 @@ describe("hub entitlement", () => {
 
   it("keeps working when the hub is unreachable", async () => {
     const { b } = await signIn();
-    hub.down = true;
+    ctx.hub.down = true;
     expect((await b.get("/me")).statusCode).toBe(200);
   });
 
   it("admins list and decide hub access requests; decisions are audited", async () => {
     const adm = await signIn("Admin 3");
     await grant(adm.sub, "admin");
-    hub.requests.push({
+    ctx.hub.requests.push({
       id: "11111111-1111-4111-8111-111111111111",
       sub: crypto.randomUUID(),
       name: "Selina",
@@ -395,9 +317,10 @@ describe("hub entitlement", () => {
       ).statusCode,
     ).toBe(409);
     expect(
-      (await db.query("select 1 from audit_log where action = 'access_request.approve'")).rowCount,
+      (await ctx.db.query("select 1 from audit_log where action = 'access_request.approve'"))
+        .rowCount,
     ).toBe(1);
-    hub.down = true;
+    ctx.hub.down = true;
     expect((await adm.b.get("/admin/access-requests")).statusCode).toBe(502);
   });
 });
@@ -408,7 +331,7 @@ describe("sessions", () => {
     const list = (await b.get("/me/sessions")).json();
     expect(list).toHaveLength(1);
     expect(list[0].current).toBe(true);
-    await db.query(
+    await ctx.db.query(
       "update sessions set last_seen_at = now() - interval '13 hours' where user_id = $1",
       [await userId(sub)],
     );

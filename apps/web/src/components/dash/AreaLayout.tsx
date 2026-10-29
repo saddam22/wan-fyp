@@ -21,7 +21,7 @@ export async function AreaLayout({ area, children }: { area: Area; children: Rea
     );
   }
   return (
-    <DashboardShell area={area} user={session}>
+    <DashboardShell area={area} user={session} live={session.mode === "wan"}>
       {children}
     </DashboardShell>
   );

@@ -65,7 +65,7 @@ export async function meJson(deps: Deps, s: SessionCtx) {
 }
 
 export const meRoutes: FastifyPluginAsync<Deps> = async (app, deps) => {
-  const { db, config, hub } = deps;
+  const { db, config, hub, notifications } = deps;
 
   app.get("/me", async (req) => meJson(deps, await requireUser(db, config, hub, req)));
 
@@ -108,7 +108,16 @@ export const meRoutes: FastifyPluginAsync<Deps> = async (app, deps) => {
         ip: req.ip,
       });
     });
-    return meJson(deps, { ...s, roles: await rolesOf(db, s.user.id) });
+    const roles = await rolesOf(db, s.user.id);
+    await notifications.service.notify({
+      type: "account.welcome",
+      recipientIds: [s.user.id],
+      actorId: null,
+      payload: { home: homeFor(roles) },
+      data: { role: b.kind === "student" ? "Student" : "Guardian" },
+      dedupeKey: `welcome:${b.kind}`,
+    });
+    return meJson(deps, { ...s, roles });
   });
 
   /** This person's EduKhata sessions (login history and devices live in WAN Identity). */

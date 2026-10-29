@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useOpenNotification } from "./LiveNotifications";
 import {
   ArrowUpCircle,
   Award,
@@ -62,7 +63,14 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { AREA_ROLES, ROLE_LABEL, type Area, type Role } from "@edukhata/contracts";
+import {
+  AREA_ROLES,
+  renderNotification,
+  ROLE_LABEL,
+  type Area,
+  type NotificationDto,
+  type Role,
+} from "@edukhata/contracts";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitch } from "@/components/public/Header";
 import { Avatar } from "@/components/ui";
@@ -219,10 +227,13 @@ function Sidebar({
 export function DashboardShell({
   area,
   user,
+  live = false,
   children,
 }: {
   area: Area;
   user: { name: string; hue: number; roles: Role[] };
+  /** True when signed in with WAN ID: the bell shows the person's real notifications. */
+  live?: boolean;
   children: React.ReactNode;
 }) {
   const { t } = useT();
@@ -232,6 +243,8 @@ export function DashboardShell({
   const [bell, setBell] = useState(false);
   const menuRef = useClickOutside(() => setMenu(false));
   const bellRef = useClickOutside(() => setBell(false));
+  const unseen = useUnseenCount(live);
+  const setUnseen = unseen.set;
   const areas = areasFor(user.roles);
   const [prevPath, setPrevPath] = useState(pathname);
   if (prevPath !== pathname) {
@@ -319,25 +332,34 @@ export function DashboardShell({
                 className="relative rounded-lg p-2 hover:bg-slate-100"
               >
                 <Bell size={20} />
-                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" />
+                {(!live || unseen.value > 0) && (
+                  <span
+                    data-testid="bell-dot"
+                    className="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger"
+                  />
+                )}
               </button>
               {bell && (
                 <div className="animate-pop absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-white shadow-[var(--shadow-pop)]">
                   <p className="border-b border-line px-4 py-3 text-sm font-bold">
                     {t.header.notifications}
                   </p>
-                  <ul className="max-h-80 divide-y divide-line overflow-y-auto text-sm">
-                    {[
-                      ["Delivery ready for review", "EK-24502 · 10 h ago"],
-                      ["New preview uploaded", "EK-24518 · 6 h ago"],
-                      ["Deadline in 30 hours", "EK-24518 · 1 h ago"],
-                    ].map(([a, b]) => (
-                      <li key={a} className="px-4 py-3">
-                        <p className="font-semibold">{a}</p>
-                        <p className="text-xs text-muted">{b}</p>
-                      </li>
-                    ))}
-                  </ul>
+                  {live ? (
+                    <LiveBellList onPick={() => setBell(false)} onSeen={setUnseen} />
+                  ) : (
+                    <ul className="max-h-80 divide-y divide-line overflow-y-auto text-sm">
+                      {[
+                        ["Delivery ready for review", "EK-24502 · 10 h ago"],
+                        ["New preview uploaded", "EK-24518 · 6 h ago"],
+                        ["Deadline in 30 hours", "EK-24518 · 1 h ago"],
+                      ].map(([a, b]) => (
+                        <li key={a} className="px-4 py-3">
+                          <p className="font-semibold">{a}</p>
+                          <p className="text-xs text-muted">{b}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <Link
                     href={`${AREA_HOME[area]}/notifications`}
                     onClick={() => setBell(false)}
@@ -407,5 +429,77 @@ export function DashboardShell({
         </main>
       </div>
     </div>
+  );
+}
+
+/** Unseen count for the bell dot, refreshed every minute while the tab is visible. */
+function useUnseenCount(live: boolean) {
+  const [value, set] = useState(0);
+  useEffect(() => {
+    if (!live) return;
+    let stop = false;
+    const tick = async () => {
+      if (document.visibilityState !== "visible") return;
+      const res = await fetch("/api/me/notifications/counts").catch(() => null);
+      if (!stop && res?.ok) set(((await res.json()) as { unseen: number }).unseen);
+    };
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 60_000);
+    return () => {
+      stop = true;
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [live]);
+  return { value, set };
+}
+
+function LiveBellList({
+  onPick,
+  onSeen,
+}: {
+  onPick: () => void;
+  /** Stable setter for the unseen count. */
+  onSeen: (n: number) => void;
+}) {
+  const { lang } = useT();
+  const open = useOpenNotification();
+  const [items, setItems] = useState<NotificationDto[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const res = await fetch("/api/me/notifications?limit=5").catch(() => null);
+      if (!live) return;
+      setItems(res?.ok ? ((await res.json()) as { items: NotificationDto[] }).items : []);
+      const seen = await fetch("/api/me/notifications/seen", { method: "POST" }).catch(() => null);
+      if (live && seen?.ok) onSeen(0);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [onSeen]);
+  if (!items) return <p className="px-4 py-3 text-sm text-muted">Loading…</p>;
+  if (items.length === 0)
+    return <p className="px-4 py-3 text-sm text-muted">You&apos;re all caught up.</p>;
+  return (
+    <ul className="max-h-80 divide-y divide-line overflow-y-auto text-sm">
+      {items.map((n) => {
+        const { title, body } = renderNotification(n.type, n.data, n.actorCount, lang);
+        return (
+          <li key={n.id}>
+            <button
+              onClick={() => (onPick(), void open(n.id))}
+              className={cn(
+                "block w-full px-4 py-3 text-left hover:bg-slate-50",
+                !n.readAt && "bg-[var(--color-accent-50)]/60",
+              )}
+            >
+              <span className="block font-semibold">{title}</span>
+              <span className="block truncate text-xs text-muted">{body}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

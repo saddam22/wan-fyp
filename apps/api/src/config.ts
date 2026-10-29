@@ -25,6 +25,8 @@ export interface Config {
    * be reachable from the internet directly.
    */
   trustProxy: string;
+  /** Web Push (VAPID). Null = push off; in-app notifications still work. */
+  vapid: { publicKey: string; privateKey: string; subject: string } | null;
 }
 
 /** Same development default as the hub's DEV_EDK_SECRET (server/src/config.ts there). */
@@ -57,5 +59,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sessionIdleMs: 12 * 3600_000,
     hubCheckIntervalMs: Number(env.HUB_CHECK_INTERVAL_SEC ?? 600) * 1000,
     trustProxy: env.TRUST_PROXY ?? "127.0.0.1,::1,::ffff:127.0.0.1",
+    vapid:
+      env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT
+        ? {
+            publicKey: env.VAPID_PUBLIC_KEY,
+            privateKey: env.VAPID_PRIVATE_KEY,
+            subject: env.VAPID_SUBJECT,
+          }
+        : null,
   };
 }

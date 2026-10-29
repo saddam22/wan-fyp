@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import type { Role } from "@edukhata/contracts";
+import { homeFor, ROLE_LABEL, type Role } from "@edukhata/contracts";
 import { tx } from "../db.ts";
 import type { Deps } from "../deps.ts";
 import { audit } from "../lib/audit.ts";
@@ -40,7 +40,10 @@ interface UserListRow {
   roles: Role[];
 }
 
-export const adminRoutes: FastifyPluginAsync<Deps> = async (app, { db, config, hub }) => {
+export const adminRoutes: FastifyPluginAsync<Deps> = async (
+  app,
+  { db, config, hub, notifications },
+) => {
   const userRow = async (id: string) =>
     (
       await db.query<UserListRow>(
@@ -93,7 +96,7 @@ export const adminRoutes: FastifyPluginAsync<Deps> = async (app, { db, config, h
     const actor = await requireUser(db, config, hub, req, "/admin/users");
     if (!UUID.test(req.params.id)) throw new ApiError("not_found");
     const { roles } = parse(rolesBody, req.body);
-    return tx(db, async (c) => {
+    const result = await tx(db, async (c) => {
       // Serialize role changes so the "last super admin" check can't race, and re-read the
       // actor's own roles under the lock (they may have been changed a moment ago).
       await c.query("select pg_advisory_xact_lock(4242)");
@@ -157,8 +160,25 @@ export const adminRoutes: FastifyPluginAsync<Deps> = async (app, { db, config, h
           [req.params.id],
         )
       ).rows[0]!;
-      return toJson(u);
+      return { user: toJson(u), added, removed };
     });
+    if (result.added.length || result.removed.length) {
+      await notifications.service.notify({
+        type: "account.roles_changed",
+        recipientIds: [req.params.id],
+        actorId: actor.user.id,
+        payload: { home: homeFor(result.user.roles) },
+        data: {
+          ...(result.added.length
+            ? { added: result.added.map((r) => ROLE_LABEL[r]).join(", ") }
+            : {}),
+          ...(result.removed.length
+            ? { removed: result.removed.map((r) => ROLE_LABEL[r]).join(", ") }
+            : {}),
+        },
+      });
+    }
+    return result.user;
   });
 
   /** Marketplace-level suspension: ends the user's EduKhata sessions immediately. */
