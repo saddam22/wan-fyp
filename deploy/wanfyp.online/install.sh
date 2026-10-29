@@ -29,13 +29,33 @@ command -v git >/dev/null || apt-get install -y -qq git
 docker compose version >/dev/null
 
 say "Ports 80 and 443"
-# Caddy needs both ports for HTTPS. Another web server (LiteSpeed, nginx, Apache) holding
-# them is not stopped by this script: it may be serving other sites.
+# Caddy needs both ports for HTTPS. If LiteSpeed (CyberPanel) already holds them, it is left
+# running for its other sites and fronts this one instead (docker-compose.litespeed.yml).
+ENVF="$ROOT/wan-fyp/deploy/wanfyp.online/.env"
+envget() { [[ -f $ENVF ]] && sed -n "s/^$1=//p" "$ENVF" || true; }
+EDGE="${EDGE:-$(envget EDGE)}"
 BUSY=$(ss -Hltnp '( sport = :80 or sport = :443 )' | grep -v docker-proxy || true)
-if [[ -n $BUSY ]]; then
-  echo "Ports 80/443 are used by another program:"; echo "$BUSY"
-  echo "Free them (or ask for the reverse-proxy setup), then run this script again."
-  exit 1
+if [[ -z $EDGE ]]; then
+  if [[ -z $BUSY ]]; then EDGE=caddy
+  elif grep -qE '"(litespeed|lshttpd|openlitespeed)"' <<<"$BUSY"; then EDGE=litespeed
+  else
+    echo "Ports 80/443 are used by another program:"; echo "$BUSY"
+    echo "Free them, then run this script again."
+    exit 1
+  fi
+fi
+WEB_PORT="${WEB_PORT:-$(envget WEB_PORT)}" HUB_PORT="${HUB_PORT:-$(envget HUB_PORT)}"
+WEB_PORT="${WEB_PORT:-3200}" HUB_PORT="${HUB_PORT:-4100}"
+if [[ $EDGE == litespeed ]]; then
+  echo "LiteSpeed serves 80/443: it stays, and forwards to 127.0.0.1:$WEB_PORT (site) and 127.0.0.1:$HUB_PORT (WAN ID)."
+  for p in $WEB_PORT $HUB_PORT; do
+    if ss -Hltnp "( sport = :$p )" | grep -v docker-proxy | grep -q .; then
+      echo "Port $p is taken by another program; run again with WEB_PORT=… HUB_PORT=… set to free ports."
+      exit 1
+    fi
+  done
+elif [[ -n $BUSY ]]; then
+  echo "Ports 80/443 are used by another program:"; echo "$BUSY"; exit 1
 fi
 
 say "Code (GitHub)"
@@ -67,6 +87,7 @@ git -C wan-fyp submodule update --init --recursive -q
 DIR="$ROOT/wan-fyp/deploy/wanfyp.online"
 cd "$DIR"
 COMPOSE=(docker compose --env-file .env -f docker-compose.yml)
+[[ $EDGE == litespeed ]] && COMPOSE+=(-f docker-compose.litespeed.yml)
 
 say "Settings (.env)"
 if [[ ! -f .env ]]; then
@@ -85,6 +106,9 @@ HUB_COOKIE_KEY=$(rnd)
 RESEND_API_KEY=${RESEND_API_KEY}
 EMAIL_FROM='${EMAIL_FROM}'
 NEXT_PUBLIC_DEMO_MODE=true
+EDGE=${EDGE}
+WEB_PORT=${WEB_PORT}
+HUB_PORT=${HUB_PORT}
 EDK_TAG=$(git -C "$ROOT/wan-fyp" rev-parse --short HEAD)
 ENV
   # The hub signs ID tokens with an RSA key, made once and kept in .env.
@@ -119,12 +143,35 @@ for i in $(seq 1 60); do
 done
 "${COMPOSE[@]}" ps
 
+if [[ $EDGE == litespeed ]]; then
+  cat <<LS
+
+The app is running. LiteSpeed must now forward the two domains (one time, in CyberPanel):
+  1. Websites → Create Website: ${SITE_DOMAIN}; and again for ${ID_DOMAIN}. Issue SSL for both
+     (SSL → Manage SSL). DNS must point here first.
+  2. For each site: Websites → Manage → vHost Conf, add at the end
+       extprocessor wanfyp {            (use wanfyp-id for ${ID_DOMAIN})
+         type proxy
+         address 127.0.0.1:${WEB_PORT}  (127.0.0.1:${HUB_PORT} for ${ID_DOMAIN})
+         maxConns 200
+         initTimeout 60
+         retryTimeout 0
+         respBuffer 0
+       }
+     and in Rewrite Rules:
+       REWRITERULE ^(.*)\$ HTTP://wanfyp/\$1 [P,L]      (HTTP://wanfyp-id/\$1 for ${ID_DOMAIN})
+  3. Check from the server:
+       curl -sI https://${SITE_DOMAIN} | head -1
+       curl -s https://${ID_DOMAIN}/oidc/.well-known/openid-configuration | head -c 80; echo
+       cd ${DIR} && docker compose --env-file .env exec api node -e "fetch('https://${ID_DOMAIN}/oidc/.well-known/openid-configuration').then(r=>console.log('api → WAN ID', r.status))"
+LS
+fi
 cat <<DONE
 
 Done.
   EduKhata:  https://${SITE_DOMAIN}
   WAN ID:    https://${ID_DOMAIN}
-(HTTPS certificates are issued on the first visit; DNS must already point here.)
+$([[ $EDGE == litespeed ]] && echo '(HTTPS comes from LiteSpeed: the steps above.)' || echo '(HTTPS certificates are issued on the first visit; DNS must already point here.)')
 
 First super admin — register at https://${SITE_DOMAIN} with "Continue with WAN ID", then:
   cd ${DIR} && docker compose --env-file .env exec api node --import tsx src/cli/grant-role.ts YOUR@EMAIL super_admin

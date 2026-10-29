@@ -1,0 +1,13 @@
+# Behind a web server that already owns ports 80/443 (LiteSpeed / CyberPanel on this server).
+# That server keeps the HTTPS certificates and forwards wanfyp.online → 127.0.0.1:WEB_PORT
+# and id.wanfyp.online → 127.0.0.1:HUB_PORT. Caddy is not started; other sites are untouched.
+services:
+  caddy:
+    profiles: [own-https]
+  web:
+    ports: ["127.0.0.1:${WEB_PORT:-3200}:3200"]
+  hub:
+    ports: ["127.0.0.1:${HUB_PORT:-4100}:4100"]
+  api:
+    # The API signs people in against https://id.wanfyp.online: through the host's web server.
+    extra_hosts: ["${ID_DOMAIN}:host-gateway"]
