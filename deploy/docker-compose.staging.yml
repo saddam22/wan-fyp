@@ -26,8 +26,15 @@ services:
     build:
       context: ..
       target: api
-      args:
+      # api and web share one build stage (it builds and checks both): same args for both.
+      args: &build-args
         NODE_IMAGE: ${NODE_IMAGE:-node:22.22.0-bookworm-slim}
+        API_INTERNAL_URL: http://api:4200
+        NEXT_PUBLIC_SITE_URL: ${WEB_URL}
+        NEXT_PUBLIC_WAN_HUB_URL: ${WAN_HUB_URL}
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+        NEXT_PUBLIC_ADS_URL: ${NEXT_PUBLIC_ADS_URL:-}
+        NEXT_PUBLIC_ADS_APP_KEY: ${NEXT_PUBLIC_ADS_APP_KEY:-}
     image: edukhata-api:${EDK_TAG:-staging}
     restart: unless-stopped
     depends_on:
@@ -58,14 +65,7 @@ services:
     build:
       context: ..
       target: web
-      args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:22.22.0-bookworm-slim}
-        API_INTERNAL_URL: http://api:4200
-        NEXT_PUBLIC_SITE_URL: ${WEB_URL}
-        NEXT_PUBLIC_WAN_HUB_URL: ${WAN_HUB_URL}
-        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
-        NEXT_PUBLIC_ADS_URL: ${NEXT_PUBLIC_ADS_URL:-}
-        NEXT_PUBLIC_ADS_APP_KEY: ${NEXT_PUBLIC_ADS_APP_KEY:-}
+      args: *build-args
     image: edukhata-web:${EDK_TAG:-staging}
     restart: unless-stopped
     depends_on: [api]

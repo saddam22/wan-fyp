@@ -53,6 +53,13 @@ services:
     build:
       context: ../..
       target: api
+      # The api and web images share one build stage (it builds and checks both), so both
+      # get the same args: the stage is built once and its web-build check passes.
+      args: &build-args
+        API_INTERNAL_URL: http://api:4200
+        NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
+        NEXT_PUBLIC_WAN_HUB_URL: https://${ID_DOMAIN}
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-true}
     image: edukhata-api:${EDK_TAG:-latest}
     restart: unless-stopped
     depends_on:
@@ -79,11 +86,7 @@ services:
     build:
       context: ../..
       target: web
-      args:
-        API_INTERNAL_URL: http://api:4200
-        NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
-        NEXT_PUBLIC_WAN_HUB_URL: https://${ID_DOMAIN}
-        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-true}
+      args: *build-args
     image: edukhata-web:${EDK_TAG:-latest}
     restart: unless-stopped
     depends_on: [api]
