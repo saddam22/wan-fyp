@@ -14,7 +14,9 @@ import { referralRoutes } from "./routes/referrals.ts";
 import { createNotifications } from "./social/notifications.ts";
 import { createEdukhataCalling } from "./calling/module.ts";
 import { createEdukhataChat } from "./chat/module.ts";
+import { catalogRoutes } from "./routes/catalog.ts";
 import { chatRoutes } from "./routes/chat.ts";
+import { mentorRoutes } from "./routes/mentors.ts";
 
 export interface AppOptions extends Omit<Deps, "notifications" | "chat" | "calling"> {
   /** Defaults to the social-module notification service on `db`. */
@@ -94,6 +96,8 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(guardianRoutes, deps);
   await app.register(referralRoutes, deps);
   await app.register(chatRoutes, deps);
+  await app.register(catalogRoutes, deps);
+  await app.register(mentorRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });
