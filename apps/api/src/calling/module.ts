@@ -6,7 +6,7 @@ import {
   iceConfigFromEnv,
   PostgresCallStore,
 } from "@agg/calling-server";
-import { involvesStaff, sessionTokenAuth } from "../chat/host.ts";
+import { mayContact, sessionTokenAuth } from "../chat/host.ts";
 import type { EdukhataChat } from "../chat/module.ts";
 import type { Db } from "../db.ts";
 import type { Deps } from "../deps.ts";
@@ -56,7 +56,7 @@ export function createEdukhataCalling(
     },
     policy: {
       async canCall({ callerId, calleeId, conversationId }) {
-        if (!(await involvesStaff(db, callerId, calleeId))) return false;
+        if (!(await mayContact(db, callerId, calleeId))) return false;
         if (!conversationId) return true;
         // A call from a chat needs both people in that chat.
         try {

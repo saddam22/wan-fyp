@@ -104,7 +104,17 @@ export async function candidates(
   return scored.slice(0, limit).map((x) => x.c);
 }
 
-export function createMatching(db: Db, notifications: Notifications, logger: Logger) {
+export interface MatchingHooks {
+  /** After a mentor is assigned (commit done): e.g. open the order's chat. */
+  onAssigned?(o: OrderRow): Promise<void>;
+}
+
+export function createMatching(
+  db: Db,
+  notifications: Notifications,
+  logger: Logger,
+  hooks: MatchingHooks = {},
+) {
   const admins = async () =>
     (
       await db.query<{ user_id: string }>(
@@ -191,6 +201,7 @@ export function createMatching(db: Db, notifications: Notifications, logger: Log
   }
 
   async function notifyAssigned(o: OrderRow) {
+    await hooks.onAssigned?.(o);
     const m = (
       await db.query<{ name: string }>("select name from users where id = $1", [o.mentor_id])
     ).rows[0];

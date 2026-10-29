@@ -32,6 +32,8 @@ interface ProfileRow {
   capacity: number;
   active_orders: number;
   completed_orders: number;
+  rating: number | null;
+  review_count: number;
 }
 
 /** Active orders count against capacity; completed ones are the public track record. */
@@ -40,7 +42,9 @@ export const PROFILE_SQL = `select u.id as user_id, u.name, coalesce(p.headline,
     coalesce(p.subjects, '{}') as subjects, coalesce(p.work_types, '{}') as work_types, coalesce(p.levels, '{}') as levels,
     coalesce(p.available, false) as available, coalesce(p.capacity, 3) as capacity,
     (select count(*)::int from orders o where o.mentor_id = u.id and o.status in ('assigned', 'in_progress', 'delivered', 'revision_requested')) as active_orders,
-    (select count(*)::int from orders o where o.mentor_id = u.id and o.status in ('approved', 'closed')) as completed_orders
+    (select count(*)::int from orders o where o.mentor_id = u.id and o.status in ('approved', 'closed')) as completed_orders,
+    (select round(avg(v.rating), 1)::float from reviews v where v.mentor_id = u.id and v.status = 'published') as rating,
+    (select count(*)::int from reviews v where v.mentor_id = u.id and v.status = 'published') as review_count
   from users u left join mentor_profiles p on p.user_id = u.id`;
 
 const toProfile = (r: ProfileRow) => ({
@@ -57,6 +61,8 @@ const toProfile = (r: ProfileRow) => ({
   capacity: r.capacity,
   activeOrders: r.active_orders,
   completedOrders: r.completed_orders,
+  rating: r.rating,
+  reviewCount: r.review_count,
 });
 
 async function profileOf(db: Queryable, userId: string) {

@@ -111,12 +111,12 @@ describe("guardian linking (ICTSpark rules, hardened)", () => {
     expect((await g.b.get("/guardian/children")).json()).toHaveLength(MAX_CHILDREN);
 
     // Already linked → 409, and the new code survives (refusal rolled back).
-    const again = await codeFor(kids[0]!);
-    expect(
-      (await g.b.post("/guardian/children", { contact: emailOf(kids[0]!.sub), code: again }))
-        .statusCode,
-    ).toBe(409);
-    expect((await kids[0]!.b.get("/me/guardian-code")).json().active).toBe(true);
+    // Pick a child that won a slot (which ones win is up to the race).
+    const linked = kids[results.findIndex((r) => r.statusCode === 201)]!;
+    const again = await codeFor(linked);
+    const dup = await g.b.post("/guardian/children", { contact: emailOf(linked.sub), code: again });
+    expect(dup.statusCode, dup.body).toBe(409);
+    expect((await linked.b.get("/me/guardian-code")).json().active).toBe(true);
   });
 
   it("the student controls permissions and either side can unlink; roles are enforced", async () => {

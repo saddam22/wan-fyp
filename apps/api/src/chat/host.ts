@@ -46,22 +46,62 @@ export function sessionTokenAuth(db: Db, tokens: ChatTokens) {
   };
 }
 
-/** True when one of the two people is EduKhata staff (the Phase 3 contact rule). */
-export async function involvesStaff(db: Db, a: string, b: string): Promise<boolean> {
+/** Orders in these statuses let the student and the mentor talk. */
+export const LIVE_ORDER_STATUSES = [
+  "assigned",
+  "in_progress",
+  "delivered",
+  "revision_requested",
+  "approved",
+  "disputed",
+];
+
+/**
+ * The contact rule (Phase 4): staff on one side, or the student and the mentor of a live
+ * order. Everyone else stays off each other's messages, so deals stay on the platform.
+ */
+export async function mayContact(db: Db, a: string, b: string): Promise<boolean> {
   const r = await db.query(
-    "select 1 from user_roles where user_id = any($1::uuid[]) and role = any($2::text[]) limit 1",
-    [[a, b], CHAT_STAFF],
+    `select 1 from user_roles where user_id = any($1::uuid[]) and role = any($2::text[])
+     union all
+     select 1 from orders where status = any($3::text[])
+       and ((student_id = $4 and mentor_id = $5) or (student_id = $5 and mentor_id = $4))
+     limit 1`,
+    [[a, b], CHAT_STAFF, LIVE_ORDER_STATUSES, a, b],
   );
   return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * People `userId` worked with on an order (or was offered work by) but may no longer
+ * message: the order closed or the mentor was replaced. The chat module treats them as
+ * blocked, so old chats become read-only. Staff are never in this list.
+ */
+export async function formerContacts(db: Db, userId: string): Promise<string[]> {
+  const r = await db.query<{ id: string }>(
+    `with mine as (
+       select o.mentor_id as peer from orders o where o.student_id = $1 and o.mentor_id is not null
+       union select o.student_id from orders o where o.mentor_id = $1
+       union select f.mentor_id from order_offers f join orders o on o.id = f.order_id where o.student_id = $1 and f.status = 'accepted'
+       union select o.student_id from order_offers f join orders o on o.id = f.order_id where f.mentor_id = $1 and f.status = 'accepted'
+     )
+     select m.peer as id from mine m
+      where not exists (select 1 from user_roles r where r.user_id = $1 and r.role = any($2::text[]))
+        and not exists (select 1 from user_roles r where r.user_id = m.peer and r.role = any($2::text[]))
+        and not exists (
+          select 1 from orders o where o.status = any($3::text[])
+            and ((o.student_id = $1 and o.mentor_id = m.peer) or (o.mentor_id = $1 and o.student_id = m.peer)))`,
+    [userId, CHAT_STAFF, LIVE_ORDER_STATUSES],
+  );
+  return r.rows.map((x) => x.id);
 }
 
 /**
  * The chat module's view of EduKhata: identity from EduKhata sessions, names from the
  * users table, and the marketplace rule for who may message whom.
  *
- * Phase 3 rule: a direct chat needs EduKhata staff on one side (support, payments,
- * admin). Student ↔ mentor chats open per order in Phase 4, so contact details and
- * deals stay on the platform. Group chats are off (features.groups = false).
+ * Contact rule: staff on one side, or the student and mentor of a live order (see
+ * mayContact). Group chats are off (features.groups = false).
  */
 export function edukhataChatHost(db: Db, tokens: ChatTokens): ChatHost {
   const load = async (ids: readonly string[]) =>
@@ -91,6 +131,8 @@ export function edukhataChatHost(db: Db, tokens: ChatTokens): ChatHost {
       return rows.map(summary);
     },
 
-    canStartDirect: (senderId, recipientId) => involvesStaff(db, senderId, recipientId),
+    canStartDirect: (senderId, recipientId) => mayContact(db, senderId, recipientId),
+
+    blockedUserIds: (userId) => formerContacts(db, userId),
   };
 }

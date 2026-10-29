@@ -188,6 +188,16 @@ export async function orderDto(db: Queryable, o: OrderRow, rel: Relation) {
       [o.id],
     )
   ).rows[0];
+  // Guardians never see chats.
+  const conversationId =
+    rel === "guardian"
+      ? undefined
+      : (
+          await db.query<{ conversation_id: string }>(
+            "select conversation_id from order_conversations where order_id = $1",
+            [o.id],
+          )
+        ).rows[0]?.conversation_id;
   const [nm, files, revisions, events] = await Promise.all([
     names(db, [o.student_id, o.mentor_id]),
     db.query<{
@@ -305,6 +315,7 @@ export async function orderDto(db: Queryable, o: OrderRow, rel: Relation) {
       actor: e.actor_id ? (actorNames.get(e.actor_id) ?? "") : "EduKhata",
     })),
     deliveryMethod: o.delivery_method,
+    ...(conversationId ? { conversationId } : {}),
     // The address is for the assigned mentor (courier delivery) and staff only.
     ...(o.delivery_address && (rel !== "mentor" || o.delivery_method === "courier")
       ? { deliveryAddress: o.delivery_address }

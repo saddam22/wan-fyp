@@ -14,9 +14,11 @@ import { referralRoutes } from "./routes/referrals.ts";
 import { createNotifications } from "./social/notifications.ts";
 import { createEdukhataCalling } from "./calling/module.ts";
 import { createEdukhataChat } from "./chat/module.ts";
+import { orderConversations } from "./chat/orders.ts";
 import { createDelivery } from "./market/delivery.ts";
 import { createMatching } from "./market/matching.ts";
 import { deliveryRoutes } from "./routes/delivery.ts";
+import { reviewRoutes } from "./routes/reviews.ts";
 import { matchingRoutes } from "./routes/matching.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { chatRoutes } from "./routes/chat.ts";
@@ -66,7 +68,12 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     notifications,
     chat,
     calling: opts.calling ?? createEdukhataCalling(opts.db, chat, notifications, app.log),
-    matching: createMatching(opts.db, notifications, app.log),
+    matching: createMatching(
+      opts.db,
+      notifications,
+      app.log,
+      orderConversations(opts.db, chat, app.log),
+    ),
     delivery: createDelivery(opts.db, notifications, app.log),
   };
   // The chat module keeps its own migration history (drizzle.__chat_migrations); the
@@ -117,6 +124,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(orderRoutes, deps);
   await app.register(matchingRoutes, deps);
   await app.register(deliveryRoutes, deps);
+  await app.register(reviewRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

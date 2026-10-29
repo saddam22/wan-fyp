@@ -88,8 +88,11 @@ describe("referrals (ICTSpark rules)", () => {
       200,
     );
     expect(
-      (await ctx.db.query("select count(*) from referrals where referrer_id = $1", [unknown.sub]))
-        .rows[0].count,
+      (
+        await ctx.db.query("select count(*) from referrals where referred_id = $1", [
+          await userId(ctx, unknown.sub),
+        ])
+      ).rows[0].count,
     ).toBe("0");
 
     // Self-referral is impossible: a code exists only after onboarding, and attribution only
