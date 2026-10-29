@@ -15,6 +15,7 @@
     "e2e:wan": "playwright test -c playwright.wan.config.ts"
   },
   "dependencies": {
+    "@adp/sdk": "workspace:*",
     "@agg/calling-client": "workspace:*",
     "@agg/calling-react": "workspace:*",
     "@chat-module/client": "workspace:*",

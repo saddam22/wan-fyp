@@ -87,6 +87,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@adp/sdk':
+        specifier: workspace:*
+        version: link:../../modules/ads/packages/sdk
       '@agg/calling-client':
         specifier: workspace:*
         version: link:../../modules/calling/packages/calling-client

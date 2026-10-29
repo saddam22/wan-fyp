@@ -39,6 +39,9 @@ import { CopyButton } from "@/components/ui/client";
 import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { LEVEL, subjectName } from "@/lib/labels";
+import { DEMO_MODE } from "@/lib/site";
+import { ADS_ENABLED } from "@/lib/ads";
+import { LiveAdSlot } from "./AdSlot";
 
 export const CATEGORY_ICON: Record<string, LucideIcon> = {
   GraduationCap,
@@ -512,10 +515,22 @@ export function StatsBand({ t, lang }: { t: Messages; lang: Lang }) {
 }
 
 /**
- * Placeholder for a Central Ad Platform slot (`@adp/sdk` <AdSlot>). Always labelled.
- * Phase 3 replaces the placeholder with the SDK; with no ad, the SDK renders nothing.
+ * A Central Ad Platform slot (`@adp/sdk`). Connected (NEXT_PUBLIC_ADS_URL + _APP_KEY):
+ * the real ad, or nothing when there is none. Not connected: a labelled placeholder in
+ * the demo preview, nothing otherwise.
  */
-export function AdSlot({ t, placement }: { t: Messages; placement: string }) {
+export function AdSlot({
+  t,
+  placement,
+  contentId,
+}: {
+  t: Messages;
+  placement: string;
+  contentId?: string;
+}) {
+  if (ADS_ENABLED)
+    return <LiveAdSlot placement={placement} {...(contentId ? { contentId } : {})} />;
+  if (!DEMO_MODE) return null;
   return (
     <aside
       aria-label={t.home.sponsored}
