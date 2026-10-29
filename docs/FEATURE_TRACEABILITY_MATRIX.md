@@ -10,8 +10,8 @@ Columns FE / API / DB / Tests are filled as each feature is built. Acceptance cr
 
 | Status | Count |
 |---|---|
-| Existing and verified | 134 |
-| Missing | 96 |
+| Existing and verified | 142 |
+| Missing | 88 |
 | Existing but incomplete | 41 |
 | Requires extension | 21 |
 | Requires integration | 9 |
@@ -371,39 +371,39 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
-| M17-01 | Server-side authorization on every route | Existing but incomplete | — | system | — | requireUser(area) on identity/admin routes | — | api.test, e2e-wan |
-| M17-02 | Rate limiting | Existing but incomplete | — | system | — | @fastify/rate-limit (global + auth routes) | — | — |
-| M17-03 | Input validation | Missing | — | system | — | — | — | — |
-| M17-04 | XSS / CSP | Missing | — | system | — | — | — | — |
-| M17-05 | CSRF (cookie session) | Existing and verified | wan-identity-hub double-submit pattern | system | — | Origin check on unsafe methods | — | api.test, e2e-wan |
-| M17-06 | Injection protection (parameterized SQL) | Existing and verified | — | system | — | parameterized SQL everywhere | — | code review |
+| M17-01 | Server-side authorization on every route | Existing and verified | — | system | — | requireUser(area) everywhere; sweep over all routes | — | security.test |
+| M17-02 | Rate limiting | Existing and verified | — | system | — | global 600/min, sign-in, payment submission | — | security.test |
+| M17-03 | Input validation | Existing and verified | — | system | — | Zod on every body; no 5xx on bad input | — | security.test |
+| M17-04 | XSS / CSP | Existing but incomplete | — | system | — | React text rendering; CSP base/object/frame/form; inline scripts still allowed (Next.js) | — | headers check |
+| M17-05 | CSRF (cookie session) | Existing and verified | wan-identity-hub double-submit pattern | system | — | Origin check on every write, answered before module handlers | — | security.test, e2e-wan |
+| M17-06 | Injection protection (parameterized SQL) | Existing and verified | — | system | — | parameterized SQL everywhere | — | code review, security.test |
 | M17-07 | Secure upload validation (magic bytes, size, type) | Existing and verified | chat-messaging sniff.ts | system | client-side type/size checks only | signed URL (key/size/type/expiry) + module magic-byte check | — | chat.test |
 | M17-08 | Private object storage + signed URLs | Existing but incomplete | chat-messaging signing.ts | system | — | local disk, signed attachment URLs (S3 later) | — | chat.test |
-| M17-09 | ID document access control | Missing | — | system | — | — | — | — |
-| M17-10 | Secret management | Missing | — | ops | — | — | — | — |
+| M17-09 | ID document access control | Existing and verified | — | system | — | reviewers + owner only, views audited | verification_files | trust.test |
+| M17-10 | Secret management | Existing but incomplete | — | ops | — | env only, .env.example, secrets check; vault in deployment | — | repo scan |
 | M17-11 | Token / session handling (server-side, httpOnly) | Existing and verified | — | system | — | httpOnly ek_sid, SHA-256 stored, idle + absolute expiry | sessions | api.test |
 | M17-12 | Webhook signature verification | Missing | — | system | — | — | — | — |
-| M17-13 | Duplicate transaction / payout protection | Missing | — | system | — | — | — | — |
-| M17-14 | Audit logs | Missing | — | system | — | — | — | — |
+| M17-13 | Duplicate transaction / payout protection | Existing and verified | — | system | — | unique TrxID/reference indexes, idempotent ledger | payments, ledger | payments.test, money.test |
+| M17-14 | Audit logs | Existing but incomplete | — | system | — | staff, money, verification, content actions (no hash chain) | audit_log | several tests |
 | M17-15 | Privacy controls + data retention | Missing | — | system | — | — | — | — |
 | M17-16 | Backup & recovery | Missing | — | ops | — | — | — | — |
-| M17-17 | Dependency review | Missing | — | ops | — | — | — | — |
-| M17-18 | Unauthorized-access tests | Existing but incomplete | — | system | — | identity/admin routes | — | api.test, e2e/access.spec, e2e-wan |
+| M17-17 | Dependency review | Existing and verified | — | ops | — | pnpm audit; fastify upgraded; upstream dev-only advisories listed | — | SECURITY_AUDIT.md |
+| M17-18 | Unauthorized-access tests | Existing and verified | — | system | — | sweep: anonymous, student, mentor, accountant, admin, cross-origin | — | security.test |
 
 ## M18 — Testing, deployment & maintenance
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
 | M18-01 | Unit tests | Missing | — | dev | vitest (contracts, i18n) | — | — | — |
-| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 85 tests |
+| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 94 tests |
 | M18-03 | Component tests | Missing | — | dev | — | — | — | — |
 | M18-04 | E2E workflow tests (Playwright) | Existing and verified | — | dev | Playwright e2e/ | full order journey with payment and payout | — | e2e-wan |
-| M18-05 | Role/permission tests | Existing but incomplete | — | dev | e2e/access.spec.ts (UI level) | API + UI + real sign-in | — | api.test, access.spec, e2e-wan |
+| M18-05 | Role/permission tests | Existing and verified | — | dev | e2e/access.spec.ts (UI level) | API sweep + UI access + real sign-in | — | security.test, access.spec, e2e-wan |
 | M18-06 | Payment workflow tests | Existing and verified | — | dev | — | payments, ledger, refunds, payouts | — | payments/ledger/money tests, e2e-wan |
 | M18-07 | Matching concurrency tests | Existing and verified | — | dev | — | simultaneous accepts | — | matching.test |
 | M18-08 | Revision workflow tests | Existing and verified | — | dev | — | free/paid revisions | — | delivery.test |
 | M18-09 | Responsive UI tests | Missing | — | dev | e2e/pages.spec.ts | — | — | — |
-| M18-10 | Performance tests | Missing | — | dev | — | — | — | — |
+| M18-10 | Performance tests | Existing but incomplete | — | dev | — | seeded in-process check (PERF=1) | — | perf.test |
 | M18-11 | Production build validation | Missing | — | dev | next build | — | — | — |
 | M18-12 | Docker / compose | Missing | — | ops | — | — | — | — |
 | M18-13 | Environment config (.env.example) | Missing | — | ops | — | — | — | — |

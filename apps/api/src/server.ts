@@ -32,7 +32,17 @@ const app = await buildApp({
   notifications,
   chat,
   calling,
-  logger: { level: config.production ? "info" : "warn" },
+  logger: {
+    level: config.production ? "info" : "warn",
+    // Query strings can carry signed-upload signatures or tokens: never log them.
+    serializers: {
+      req: (r: { method: string; url: string; ip?: string }) => ({
+        method: r.method,
+        url: r.url.split("?")[0],
+        ip: r.ip,
+      }),
+    },
+  },
 });
 await app.listen({ host: config.host, port: config.port });
 // Realtime chat. Browsers connect through the web origin: <web>/api/chat/socket.io.

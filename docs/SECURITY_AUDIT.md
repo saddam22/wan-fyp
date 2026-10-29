@@ -100,4 +100,57 @@ Known gaps: the fee for sending a payout/refund isn't recorded (Q7); no statemen
 
 Known gaps: document retention period is open (Q20); no malware scanning of uploads (magic-byte checks only).
 
+## Phase 7 — hardening and checklist (2026-10-29)
+
+### Automated access sweep (`apps/api/test/security.test.ts`)
+
+The API records every route it registers (166 today). The sweep calls each one:
+
+| Check                                                                             | Expectation                                                                           | Result           |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------- |
+| No session, every non-public route                                                | 401 or 403 (signed upload URLs: 403 without a valid signature); never data, never 5xx | pass             |
+| Student on every `/admin`, `/accountant`, `/mentor` route                         | 403 or 404                                                                            | pass             |
+| Mentor on every `/admin`, `/accountant` route; accountant on every `/admin` route | 403 or 404                                                                            | pass             |
+| Admin on super-admin settings and every `/accountant` route                       | 403 or 404                                                                            | pass             |
+| Every write with another `Origin`, even with a super admin's session              | 403                                                                                   | pass (after fix) |
+| Every route with unknown ids and empty bodies, as a super admin                   | never 5xx                                                                             | pass             |
+| Payment submissions per session; sign-in per address                              | 429 after the limit                                                                   | pass             |
+
+The public list is explicit in the test: health, sign-in, catalog, mentor directory/reviews/badges, quote, published content, referral resolve, chat/push config. A new route that is public by mistake fails the test.
+
+Found and fixed by the sweep:
+
+- **Cross-site writes to chat routes.** They were refused but answered `500`, because the chat module's own error handler didn't know our error type. The Origin check now answers `403` itself.
+- **Anonymous chat calls.** They got validation errors (`400`) before authentication. Chat routes now need a bearer chat token before the module sees the request.
+- **`POST /me/notifications/read`.** It validated the body before checking the session.
+
+### Other hardening
+
+- **Web response headers.** `X-Frame-Options: DENY` and `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (camera and microphone for calls on this origin only), CSP `base-uri 'self'; object-src 'none'; form-action 'self'`, and HSTS when the site URL is HTTPS. The API already sends helmet's headers.
+- **Logs.** API request logs no longer include query strings, which can hold signed-upload signatures.
+- **Dependencies.** `pnpm audit` reported:
+  - `fastify` 5.12.5 → upgraded to 5.12.6 (GHSA-389g-gv7q-r4x8, low).
+  - Two remaining advisories are inside the chat submodule's development tooling: `drizzle-kit` → `esbuild` ≤ 0.24 (moderate, dev server only), and the chat client's dev `fastify`. Neither is in EduKhata's production paths. They should be updated upstream in `chat-messaging`.
+- **Secrets.** The repository has no committed secrets; only `.env.example` files are tracked. The web app reads no server secrets (only `NEXT_PUBLIC_*` values reach the browser). Tokens stay server-side: an `httpOnly` session cookie, and chat tokens bound to the session.
+- **Performance.** See `TESTING_REPORT.md`: p95 ≤ 130 ms for the hot endpoints on 20,000+ orders at 10 concurrent clients, with the existing indexes.
+
+### Checklist before production
+
+| Item                                                                                        | Status                                    |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Authorization enforced on the server for every route                                        | Done (sweep)                              |
+| CSRF (Origin check) on every write                                                          | Done (sweep)                              |
+| Rate limits (global, sign-in, payment submission)                                           | Done (tests)                              |
+| Uploads: signed URLs, size and type, magic bytes, EXIF removed, private serving             | Done                                      |
+| Money: double-entry, DB-enforced balance and immutability, maker-checker, unique references | Done                                      |
+| Audit log for staff and money actions                                                       | Done (no hash chain yet)                  |
+| Security headers (web + API)                                                                | Done                                      |
+| Dependency audit                                                                            | Done; 2 upstream dev-only advisories open |
+| TLS, HSTS, `TRUST_PROXY` behind the reverse proxy                                           | Phase 8 configuration                     |
+| Backups and restore drill                                                                   | Phase 8                                   |
+| SMS/email providers for the hub (S6)                                                        | **Open — blocks production sign-in**      |
+| TURN server for calls                                                                       | Open                                      |
+| Malware scanning of uploads                                                                 | Open (recommended: ClamAV sidecar)        |
+| Penetration test by a third party                                                           | Recommended before launch                 |
+
 ## Planned controls (Module 17) — tracked in FEATURE_TRACEABILITY_MATRIX.md M17-*

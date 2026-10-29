@@ -9,7 +9,7 @@
 | 4     | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes, order chats, reviews                                 | E2E order journey                                   | **Done**                           |
 | 5     | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices                                                              | Ledger balances under tests; no duplicate payout    | **Done**                           |
 | 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | **Done**                           |
-| 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | Not started                        |
+| 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | **Done**                           |
 | 8     | Docker, staging, env validation, backups/restore drill, deploy & rollback guide                                                                                        | **Your production approval**                        | Not started                        |
 
 ## Phase 1 outcome
@@ -66,6 +66,25 @@ Not built:
 - A jobs/tuition board: `marketplace-jobs` is a different domain, a job board with applications. It is kept for a later decision rather than bolted on.
 - Banners and website messaging admin pages: still sample data.
 
-## Next — Phase 7
+## Phase 7 outcome
 
-Security hardening: an unauthorized-access sweep over every API route, rate-limit tests, security headers on the web, dependency audit, a performance check.
+Done:
+
+- An automated access sweep over all 166 API routes (anonymous, each role, cross-origin, unknown ids). It found and fixed three issues.
+- Rate-limit tests.
+- Web security headers.
+- Query strings dropped from logs.
+- A dependency audit: `fastify` upgraded; two upstream dev-only advisories in the chat submodule.
+- A secrets check.
+- A seeded performance check.
+
+The production checklist is in `SECURITY_AUDIT.md`. Open blockers for production:
+
+- Hub SMS/email providers (S6).
+- A TURN server.
+- Malware scanning of uploads (recommended).
+- A third-party penetration test (recommended).
+
+## Next — Phase 8
+
+Docker images and compose, environment validation, backup and restore scripts with a drill, a staging configuration, and the deploy and rollback guide. **No production deployment without the owner's approval.**

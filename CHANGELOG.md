@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-29 — Phase 7: security hardening and QA
+
+- Access sweep test over every API route (166): anonymous, student, mentor, accountant, admin, cross-origin, unknown ids; rate-limit tests.
+- Fixed: chat routes answered refused cross-site writes with 500; anonymous chat calls were validated before authentication; one notification route checked the session after validation.
+- Web security headers (no framing, nosniff, referrer, permissions, CSP basics, HSTS on HTTPS); API request logs without query strings.
+- `fastify` 5.12.6 (GHSA-389g-gv7q-r4x8); upstream dev-only advisories documented.
+- Seeded performance check (opt-in `PERF=1`).
+
 ## 2026-10-29 — Phase 6: trust and growth
 
 - Mentor verification with private documents and an independent reviewer (ICTSpark's application review), revocation, audit of document views.

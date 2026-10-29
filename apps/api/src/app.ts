@@ -35,6 +35,8 @@ declare module "fastify" {
   interface FastifyInstance {
     /** Module handles (matching sweep in server.ts, gateways in tests). */
     edkDeps: Deps;
+    /** Every route registered (method + URL), for the access sweep test. */
+    edkRoutes: { method: string; url: string }[];
   }
 }
 
@@ -85,6 +87,11 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   // The chat module keeps its own migration history (drizzle.__chat_migrations); the
   // calling module creates its two tables if missing (calls, call_active_users).
   app.decorate("edkDeps", deps);
+  const routes: { method: string; url: string }[] = [];
+  app.decorate("edkRoutes", routes);
+  app.addHook("onRoute", (r) => {
+    for (const m of ([] as string[]).concat(r.method)) routes.push({ method: m, url: r.url });
+  });
   await deps.chat.chat.migrate();
   await deps.calling.store.migrate();
   await app.register(cookie);
@@ -111,10 +118,24 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   });
 
   // CSRF: unsafe methods only from the EduKhata web origin (browsers can't forge Origin).
-  app.addHook("onRequest", async (req) => {
-    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return;
-    if (req.headers.origin !== config.webUrl)
-      throw new ApiError("forbidden", "Cross-origin request refused");
+  // Answered here (not thrown): module scopes such as chat have their own error handlers.
+  app.addHook("onRequest", async (req, reply) => {
+    const safe = req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS";
+    if (!safe && req.headers.origin !== config.webUrl) {
+      const e = new ApiError("forbidden", "Cross-origin request refused");
+      return reply.code(e.status).send(e.toJSON());
+    }
+    // Chat routes need a chat token: refuse anonymous calls before the module validates input.
+    const path = req.url.split("?")[0]!;
+    if (
+      path.startsWith("/chat/") &&
+      path !== "/chat/config" &&
+      !path.startsWith("/chat/socket.io") &&
+      !/^Bearer \S+/.test(req.headers.authorization ?? "")
+    ) {
+      const e = new ApiError("unauthorized", "Sign in to chat");
+      return reply.code(e.status).send(e.toJSON());
+    }
   });
 
   app.get("/health", async () => ({ ok: true }));

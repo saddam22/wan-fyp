@@ -1,5 +1,17 @@
 # Testing Report
 
+## Phase 7 — security and performance (2026-10-29)
+
+| Suite                                                                                                                                         | Result                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API integration incl. the access sweep                                                                                                        | **94 / 94** (+9): route inventory; anonymous, student, mentor, accountant and admin sweeps over all 166 routes; cross-origin writes; no 5xx on unknown ids; payment-submission and sign-in rate limits |
+| Performance (`PERF=1`, seeded: 300 mentors, 1,000 students, 10,000+ orders, 2,000 reviews; 100 requests at 10 concurrent clients, in-process) | p95: catalog 52 ms, mentors 120–126 ms, staff orders 121 ms, candidates 102 ms, balances 29 ms, ledger 22 ms, posts 8 ms                                                                               |
+| Real end-to-end / demo UI                                                                                                                     | rerun after the hardening (see Phase 6 counts)                                                                                                                                                         |
+
+Bugs found by the sweep: chat routes answered refused cross-site writes with 500; anonymous chat calls got 400 before 401; one notification route validated before checking the session.
+
+Not covered: load over a real network and reverse proxy; many API instances (the design is single-instance for now).
+
 ## Phase 6 — trust and growth (2026-10-29)
 
 | Suite                             | Result                                                                                                                                                                                                                                                                                                                                                                 |

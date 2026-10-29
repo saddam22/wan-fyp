@@ -797,6 +797,22 @@ P2: list[tuple[str, str, str, str, str, str]] = [
     ("M14", "Monthly / yearly subscriptions", "EI", "Pro month/year, expiry + reminder, no auto-renewal", "mentor_promotions", "growth.test"),
     ("M16", "Schema + migrations", "EI", "migrations 001–013 + module migrations", "schema_migrations", "all API tests (fresh schema)"),
     ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "85 tests"),
+    # Phase 7 — security hardening (2026-10-29)
+    ("M17", "Server-side authorization", "EV", "requireUser(area) everywhere; sweep over all routes", "—", "security.test"),
+    ("M17", "Rate limiting", "EV", "global 600/min, sign-in, payment submission", "—", "security.test"),
+    ("M17", "Input validation", "EV", "Zod on every body; no 5xx on bad input", "—", "security.test"),
+    ("M17", "XSS / CSP", "EI", "React text rendering; CSP base/object/frame/form; inline scripts still allowed (Next.js)", "—", "headers check"),
+    ("M17", "CSRF", "EV", "Origin check on every write, answered before module handlers", "—", "security.test, e2e-wan"),
+    ("M17", "Injection protection", "EV", "parameterized SQL everywhere", "—", "code review, security.test"),
+    ("M17", "ID document access control", "EV", "reviewers + owner only, views audited", "verification_files", "trust.test"),
+    ("M17", "Secret management", "EI", "env only, .env.example, secrets check; vault in deployment", "—", "repo scan"),
+    ("M17", "Duplicate transaction", "EV", "unique TrxID/reference indexes, idempotent ledger", "payments, ledger", "payments.test, money.test"),
+    ("M17", "Audit logs", "EI", "staff, money, verification, content actions (no hash chain)", "audit_log", "several tests"),
+    ("M17", "Dependency review", "EV", "pnpm audit; fastify upgraded; upstream dev-only advisories listed", "—", "SECURITY_AUDIT.md"),
+    ("M17", "Unauthorized-access tests", "EV", "sweep: anonymous, student, mentor, accountant, admin, cross-origin", "—", "security.test"),
+    ("M18", "Role/permission tests", "EV", "API sweep + UI access + real sign-in", "—", "security.test, access.spec, e2e-wan"),
+    ("M18", "Performance tests", "EI", "seeded in-process check (PERF=1)", "—", "perf.test"),
+    ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "94 tests"),
 ]
 
 

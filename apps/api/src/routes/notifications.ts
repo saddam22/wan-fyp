@@ -68,16 +68,13 @@ export const notificationRoutes: FastifyPluginAsync<Deps> = async (
   });
 
   app.post("/me/notifications/read", async (req) => {
+    const who = await actor(req);
     const body = z
       .object({ ids: z.array(z.string()).min(1).max(100), read: z.boolean().optional() })
       .safeParse(req.body);
     if (!body.success) throw new ApiError("validation", "Provide 1–100 notification ids", "ids");
     return {
-      changed: await notifications.service.markRead(
-        await actor(req),
-        body.data.ids,
-        body.data.read ?? true,
-      ),
+      changed: await notifications.service.markRead(who, body.data.ids, body.data.read ?? true),
     };
   });
 
