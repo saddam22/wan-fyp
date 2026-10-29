@@ -29,6 +29,13 @@ export const SETTINGS_SCHEMA = z.object({
     .int()
     .min(5)
     .max(24 * 60),
+  /** Price of a revision beyond the free ones, as a share of the order price. */
+  paid_revision_fee_pct: z.number().min(0).max(1),
+  max_revisions: z.number().int().min(0).max(20),
+  /** Approved orders close after this many days. */
+  auto_close_days: z.number().int().min(1).max(60),
+  /** The mentor is reminded this long before the deadline. */
+  deadline_reminder_hours: z.number().int().min(1).max(168),
 });
 export type Settings = z.infer<typeof SETTINGS_SCHEMA>;
 export type SettingKey = keyof Settings;

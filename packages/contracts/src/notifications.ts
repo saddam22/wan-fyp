@@ -181,6 +181,21 @@ const ORDER_TYPES: NotificationTypeSpec[] = [
     () => "শিক্ষার্থী আপনার কাজ অনুমোদন করেছেন",
   ),
   order(
+    "order.deadline",
+    (d) => `Due in ${s(d.hours)} hours`,
+    (d) => `${s(d.hours)} ঘণ্টার মধ্যে জমা দিতে হবে`,
+  ),
+  order(
+    "order.revision_due",
+    () => "Revision needs payment",
+    () => "রিভিশনের জন্য পেমেন্ট দরকার",
+  ),
+  order(
+    "order.closed",
+    () => "Order closed",
+    () => "অর্ডার সম্পন্ন",
+  ),
+  order(
     "order.cancelled",
     () => "Order cancelled",
     () => "অর্ডার বাতিল হয়েছে",

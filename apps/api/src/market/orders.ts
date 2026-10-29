@@ -174,6 +174,20 @@ export async function names(db: Queryable, ids: (string | null)[]) {
 
 /** Order as the contracts' `Order` type, shaped for the viewer's relation. */
 export async function orderDto(db: Queryable, o: OrderRow, rel: Relation) {
+  const dispute = (
+    await db.query<{
+      id: string;
+      status: string;
+      reason: string;
+      opened_at: Date;
+      resolved_at: Date | null;
+      resolution_note: string | null;
+      refund_minor: string | null;
+    }>(
+      "select id, status, reason, opened_at, resolved_at, resolution_note, refund_minor from disputes where order_id = $1 order by opened_at desc limit 1",
+      [o.id],
+    )
+  ).rows[0];
   const [nm, files, revisions, events] = await Promise.all([
     names(db, [o.student_id, o.mentor_id]),
     db.query<{
@@ -195,8 +209,10 @@ export async function orderDto(db: Queryable, o: OrderRow, rel: Relation) {
       paid: boolean;
       requested_at: Date;
       resolved_at: Date | null;
+      fee_minor: string;
+      payment_status: string;
     }>(
-      "select n, instructions, paid, requested_at, resolved_at from order_revisions where order_id = $1 order by n",
+      "select n, instructions, paid, requested_at, resolved_at, fee_minor, payment_status from order_revisions where order_id = $1 order by n",
       [o.id],
     ),
     db.query<{ at: Date; kind: string; status: string; note: string; actor_id: string | null }>(
@@ -250,8 +266,25 @@ export async function orderDto(db: Queryable, o: OrderRow, rel: Relation) {
       requestedAt: r.requested_at.toISOString(),
       instructions: r.instructions,
       paid: r.paid,
+      feeMinor: Number(r.fee_minor),
+      paymentStatus: r.payment_status,
       ...(r.resolved_at ? { resolvedAt: r.resolved_at.toISOString() } : {}),
     })),
+    dispute: dispute
+      ? {
+          id: dispute.id,
+          status: dispute.status,
+          reason: dispute.reason,
+          openedAt: dispute.opened_at.toISOString(),
+          ...(dispute.resolved_at
+            ? {
+                resolvedAt: dispute.resolved_at.toISOString(),
+                resolutionNote: dispute.resolution_note,
+                refundMinor: Number(dispute.refund_minor ?? 0),
+              }
+            : {}),
+        }
+      : null,
     files: files.rows
       .filter((f) => f.stage !== "final" || finalsVisible)
       .map((f) => ({

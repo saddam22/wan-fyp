@@ -372,8 +372,12 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
       b.stage === "requirement"
         ? 0
         : Number(
-            (await db.query("select count(*) from order_revisions where order_id = $1", [o.id]))
-              .rows[0].count,
+            (
+              await db.query(
+                "select count(*) from order_revisions where order_id = $1 and payment_status <> 'cancelled'",
+                [o.id],
+              )
+            ).rows[0].count,
           );
     const key = `${o.id}/${randomUUID()}`;
     const r = await db.query<{ id: string }>(

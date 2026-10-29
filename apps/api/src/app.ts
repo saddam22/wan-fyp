@@ -14,7 +14,9 @@ import { referralRoutes } from "./routes/referrals.ts";
 import { createNotifications } from "./social/notifications.ts";
 import { createEdukhataCalling } from "./calling/module.ts";
 import { createEdukhataChat } from "./chat/module.ts";
+import { createDelivery } from "./market/delivery.ts";
 import { createMatching } from "./market/matching.ts";
+import { deliveryRoutes } from "./routes/delivery.ts";
 import { matchingRoutes } from "./routes/matching.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { chatRoutes } from "./routes/chat.ts";
@@ -28,7 +30,10 @@ declare module "fastify" {
   }
 }
 
-export interface AppOptions extends Omit<Deps, "notifications" | "chat" | "calling" | "matching"> {
+export interface AppOptions extends Omit<
+  Deps,
+  "notifications" | "chat" | "calling" | "matching" | "delivery"
+> {
   /** Defaults to the social-module notification service on `db`. */
   notifications?: Deps["notifications"];
   /** Defaults to the WAN chat module on `db`. */
@@ -62,6 +67,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     chat,
     calling: opts.calling ?? createEdukhataCalling(opts.db, chat, notifications, app.log),
     matching: createMatching(opts.db, notifications, app.log),
+    delivery: createDelivery(opts.db, notifications, app.log),
   };
   // The chat module keeps its own migration history (drizzle.__chat_migrations); the
   // calling module creates its two tables if missing (calls, call_active_users).
@@ -110,6 +116,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(mentorRoutes, deps);
   await app.register(orderRoutes, deps);
   await app.register(matchingRoutes, deps);
+  await app.register(deliveryRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });
