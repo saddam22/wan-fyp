@@ -88,7 +88,11 @@ for repo in wan-fyp wan-identity-hub; do
     exit 1
   fi
 done
-git -C wan-fyp submodule update --init --recursive -q
+if ! git -C wan-fyp submodule update --init --recursive -q; then
+  echo "A module repository could not be read (see the name above): add it to the token's"
+  echo "repository list on GitHub (Settings → Developer settings → Fine-grained tokens → Edit), then run again."
+  exit 1
+fi
 
 DIR="$ROOT/wan-fyp/deploy/wanfyp.online"
 cd "$DIR"
