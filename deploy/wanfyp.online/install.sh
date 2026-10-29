@@ -44,16 +44,22 @@ if [[ -z $EDGE ]]; then
     exit 1
   fi
 fi
+taken() { ss -Hltnp "( sport = :$1 )" | grep -v docker-proxy | grep -q .; }
+# A port chosen before (saved in .env) or given on the command line is kept; otherwise the
+# first free one from 3200 / 4100 upwards, so other apps on this server are never disturbed.
+pick() { local p=$1; while taken "$p"; do p=$((p + 1)); done; echo "$p"; }
 WEB_PORT="${WEB_PORT:-$(envget WEB_PORT)}" HUB_PORT="${HUB_PORT:-$(envget HUB_PORT)}"
-WEB_PORT="${WEB_PORT:-3200}" HUB_PORT="${HUB_PORT:-4100}"
 if [[ $EDGE == litespeed ]]; then
-  echo "LiteSpeed serves 80/443: it stays, and forwards to 127.0.0.1:$WEB_PORT (site) and 127.0.0.1:$HUB_PORT (WAN ID)."
+  WEB_PORT="${WEB_PORT:-$(pick 3200)}"
+  HUB_PORT="${HUB_PORT:-$(pick 4100)}"
+  [[ $HUB_PORT != "$WEB_PORT" ]] || HUB_PORT=$(pick $((WEB_PORT + 1)))
   for p in $WEB_PORT $HUB_PORT; do
-    if ss -Hltnp "( sport = :$p )" | grep -v docker-proxy | grep -q .; then
+    if taken "$p"; then
       echo "Port $p is taken by another program; run again with WEB_PORT=… HUB_PORT=… set to free ports."
       exit 1
     fi
   done
+  echo "LiteSpeed serves 80/443: it stays, and forwards to 127.0.0.1:$WEB_PORT (site) and 127.0.0.1:$HUB_PORT (WAN ID)."
 elif [[ -n $BUSY ]]; then
   echo "Ports 80/443 are used by another program:"; echo "$BUSY"; exit 1
 fi
