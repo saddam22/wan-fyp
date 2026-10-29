@@ -247,6 +247,43 @@ test("guardian links a child with a one-time code; the student controls and ends
   await expect(gp.getByText("No children linked yet")).toBeVisible();
 });
 
+test("a ?ref link opened before sign-up credits the referrer at onboarding", async ({
+  browser,
+}) => {
+  const suffix = STUDENT.split(" ")[1]!;
+  const a = await browser.newContext();
+  const ap = await a.newPage();
+  await registerOnHub(ap.request, `Arif ${suffix}`, `arif.${run}@example.com`);
+  await wanSignIn(ap);
+  await ap.getByLabel("Institution").fill("Notre Dame College");
+  await ap.getByLabel("Class / year").selectOption("HSC 2nd year");
+  await ap.getByRole("button", { name: "ICT" }).click();
+  await ap.getByRole("button", { name: "Finish setup" }).click();
+  await expect(ap).toHaveURL(/\/student$/);
+  await ap.goto("/student/referrals");
+  const code = (await ap
+    .getByText(/^EDK-ARIF-/)
+    .first()
+    .textContent())!.trim();
+
+  const f = await browser.newContext();
+  const fp = await f.newPage();
+  await fp.goto(`/how-it-works?ref=${code}`);
+  await registerOnHub(fp.request, `Mitu ${suffix}`, `mitu.${run}@example.com`);
+  await wanSignIn(fp);
+  await expect(fp.getByText(`You were invited by Arif`)).toBeVisible();
+  await fp.getByLabel("Institution").fill("Viqarunnisa Noon College");
+  await fp.getByLabel("Class / year").selectOption("HSC 1st year");
+  await fp.getByRole("button", { name: "Biology" }).click();
+  await fp.getByRole("button", { name: "Finish setup" }).click();
+  await expect(fp).toHaveURL(/\/student$/);
+
+  await ap.goto("/student/referrals");
+  await expect(ap.getByRole("listitem").filter({ hasText: "Mitu" })).toContainText("Joined");
+  await ap.goto("/student/notifications");
+  await expect(ap.getByText("A friend joined with your code")).toBeVisible();
+});
+
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {
   const evil = await request.post("/api/me/onboarding", {
     headers: { origin: "https://evil.example" },

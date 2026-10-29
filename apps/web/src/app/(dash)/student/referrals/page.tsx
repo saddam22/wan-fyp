@@ -1,12 +1,5 @@
-import { fixtures } from "@edukhata/contracts";
-import { ReferralPanel } from "@/components/dash/Referral";
-import { PageHeader } from "@/components/ui";
+import { ReferralsPage } from "@/components/dash/ReferralsPage";
 
-export default function StudentReferrals() {
-  return (
-    <>
-      <PageHeader title="Refer & Earn" />
-      <ReferralPanel r={fixtures.referral} />
-    </>
-  );
+export default function Referrals() {
+  return <ReferralsPage />;
 }

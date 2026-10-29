@@ -10,6 +10,7 @@ import { authRoutes } from "./routes/auth.ts";
 import { guardianRoutes } from "./routes/guardians.ts";
 import { meRoutes } from "./routes/me.ts";
 import { notificationRoutes } from "./routes/notifications.ts";
+import { referralRoutes } from "./routes/referrals.ts";
 import { createNotifications } from "./social/notifications.ts";
 
 export interface AppOptions extends Omit<Deps, "notifications"> {
@@ -74,6 +75,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(adminRoutes, deps);
   await app.register(notificationRoutes, deps);
   await app.register(guardianRoutes, deps);
+  await app.register(referralRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

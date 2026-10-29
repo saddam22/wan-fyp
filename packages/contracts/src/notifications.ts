@@ -91,7 +91,7 @@ export const NOTIFICATION_TYPES: NotificationTypeSpec[] = [
     type: "referral.joined",
     category: "referral",
     channels: ["in_app", "push"],
-    link: () => "/student/referrals",
+    link: (p) => s(p.link) || "/student/referrals",
     text: {
       en: (d) => ({
         title: "A friend joined with your code",

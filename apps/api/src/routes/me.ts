@@ -6,6 +6,7 @@ import type { Deps } from "../deps.ts";
 import { audit } from "../lib/audit.ts";
 import { ApiError } from "../lib/errors.ts";
 import { requireUser, rolesOf, type SessionCtx } from "../lib/session.ts";
+import { attributeReferral, REF_COOKIE } from "./referrals.ts";
 
 const SUBJECTS = [
   "biology",
@@ -28,8 +29,13 @@ const onboardingSchema = z.discriminatedUnion("kind", [
     board: z.string().trim().max(60).optional(),
     subjects: z.array(z.enum(SUBJECTS)).min(1).max(10),
     country: z.literal("BD").default("BD"),
+    referralCode: z.string().trim().max(40).optional(),
   }),
-  z.object({ kind: z.literal("guardian"), country: z.literal("BD").default("BD") }),
+  z.object({
+    kind: z.literal("guardian"),
+    country: z.literal("BD").default("BD"),
+    referralCode: z.string().trim().max(40).optional(),
+  }),
 ]);
 
 export async function meJson(deps: Deps, s: SessionCtx) {
@@ -81,7 +87,10 @@ export const meRoutes: FastifyPluginAsync<Deps> = async (app, deps) => {
       throw new ApiError("validation", issue?.message, issue?.path.join("."));
     }
     const b = parsed.data;
-    await tx(db, async (c) => {
+    const referrer = await tx(db, async (c) => {
+      // Serialize onboarding per person, so "first time here" is decided once.
+      await c.query("select pg_advisory_xact_lock(4244, hashtext($1))", [s.user.id]);
+      const isNew = (await rolesOf(c, s.user.id)).length === 0;
       if (b.kind === "student") {
         await c.query(
           `insert into student_profiles (user_id, institution, class_level, board, subjects, country) values ($1, $2, $3, $4, $5, $6)
@@ -107,8 +116,34 @@ export const meRoutes: FastifyPluginAsync<Deps> = async (app, deps) => {
         details: { kind: b.kind },
         ip: req.ip,
       });
+      // Referrals count only for people joining EduKhata now (ICTSpark: set at sign-up).
+      if (!isNew) return null;
+      const ref = await attributeReferral(c, s.user.id, {
+        code: b.referralCode || undefined,
+        cookie: req.cookies[REF_COOKIE],
+      });
+      if (ref)
+        await audit(c, {
+          actorId: s.user.id,
+          action: "referral.attributed",
+          target: ref.id,
+          ip: req.ip,
+        });
+      return ref;
     });
     const roles = await rolesOf(db, s.user.id);
+    if (referrer) {
+      // Referral pages live in the student and guardian areas only.
+      const area = (await rolesOf(db, referrer.id)).includes("student") ? "student" : "guardian";
+      await notifications.service.notify({
+        type: "referral.joined",
+        recipientIds: [referrer.id],
+        actorId: null,
+        payload: { link: `/${area}/referrals` },
+        data: { friend: s.user.name.trim().split(/\s+/)[0] ?? "" },
+        dedupeKey: `referral:${s.user.id}`,
+      });
+    }
     await notifications.service.notify({
       type: "account.welcome",
       recipientIds: [s.user.id],

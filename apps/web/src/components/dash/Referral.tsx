@@ -3,12 +3,12 @@
 import { Gift, Link2, Share2, Users, Wallet } from "lucide-react";
 import { formatDate, formatMoney, type ReferralSummary } from "@edukhata/contracts";
 import { Badge, Card, CardHeader, StatCard } from "@/components/ui";
-import { CopyButton, useDemoToast } from "@/components/ui/client";
+import { CopyButton, useToast } from "@/components/ui/client";
 import { useT } from "@/lib/i18n/client";
 
 export function ReferralPanel({ r }: { r: ReferralSummary }) {
   const { lang } = useT();
-  const demo = useDemoToast();
+  const toast = useToast();
   const bdt = (m: number) => formatMoney({ amountMinor: m, currency: "BDT" }, lang);
   return (
     <div className="space-y-5">
@@ -30,7 +30,13 @@ export function ReferralPanel({ r }: { r: ReferralSummary }) {
             </span>
             <CopyButton text={r.link} label="Copy link" />
             <button
-              onClick={() => demo("Share sheet opened")}
+              onClick={() =>
+                typeof navigator.share === "function"
+                  ? void navigator.share({ title: "EduKhata", url: r.link }).catch(() => undefined)
+                  : void navigator.clipboard
+                      ?.writeText(r.link)
+                      .then(() => toast({ tone: "success", title: "Link copied" }))
+              }
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-[var(--color-accent)] ring-1 ring-line"
             >
               <Share2 size={13} /> Share
@@ -59,6 +65,11 @@ export function ReferralPanel({ r }: { r: ReferralSummary }) {
           title="Referral history"
           sub="Rewards are recorded in the reward ledger after the friend's first order is completed."
         />
+        {r.history.length === 0 && (
+          <p className="px-4 py-6 text-center text-sm text-muted">
+            Nobody has joined with your code yet.
+          </p>
+        )}
         <ul className="divide-y divide-line">
           {r.history.map((h) => (
             <li

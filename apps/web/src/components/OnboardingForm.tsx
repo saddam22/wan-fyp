@@ -11,7 +11,16 @@ import { cn } from "@/lib/cn";
 type Kind = "student" | "guardian" | "mentor";
 
 /** `live`: submit to the EduKhata API (WAN sign-in); otherwise a demo form. */
-export function OnboardingForm({ live = false, name }: { live?: boolean; name?: string }) {
+export function OnboardingForm({
+  live = false,
+  name,
+  invitedBy,
+}: {
+  live?: boolean;
+  name?: string;
+  /** First name behind the ?ref= link this browser opened (resolved by the API). */
+  invitedBy?: string;
+}) {
   const [kind, setKind] = useState<Kind>("student");
   const [f, setF] = useState({
     institution: "",
@@ -20,6 +29,7 @@ export function OnboardingForm({ live = false, name }: { live?: boolean; name?: 
     subjects: [] as string[],
     childCode: "",
     country: "BD",
+    referralCode: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -70,8 +80,13 @@ export function OnboardingForm({ live = false, name }: { live?: boolean; name?: 
                   board: f.board,
                   subjects: f.subjects,
                   country: f.country,
+                  ...(f.referralCode.trim() ? { referralCode: f.referralCode.trim() } : {}),
                 }
-              : { kind, country: f.country },
+              : {
+                  kind,
+                  country: f.country,
+                  ...(f.referralCode.trim() ? { referralCode: f.referralCode.trim() } : {}),
+                },
           ),
         })
           .then(async (res) => {
@@ -264,6 +279,25 @@ export function OnboardingForm({ live = false, name }: { live?: boolean; name?: 
           Mentors apply with documents and a skill test. An EduKhata admin grants the mentor role
           after review.
         </p>
+      )}
+      {live && (kind === "student" || kind === "guardian") && (
+        <Field
+          label="Referral code (optional)"
+          htmlFor="o-ref"
+          hint={
+            invitedBy
+              ? `You were invited by ${invitedBy}. Enter a code only to use a different one.`
+              : "Got a code from a friend? Enter it now — it can't be added later."
+          }
+        >
+          <input
+            id="o-ref"
+            className="input font-mono uppercase sm:w-56"
+            maxLength={40}
+            value={f.referralCode}
+            onChange={(e) => setF({ ...f, referralCode: e.target.value })}
+          />
+        </Field>
       )}
       {name && <p className="text-xs text-muted">Signed in as {name}.</p>}
       <button
