@@ -156,6 +156,42 @@ const order = (
 
 const ORDER_TYPES: NotificationTypeSpec[] = [
   order(
+    "refund.decided",
+    () => "A refund is due — please check",
+    () => "একটি রিফান্ড দিতে হবে — দেখুন",
+    { channels: ["in_app"] },
+  ),
+  order(
+    "refund.paid",
+    (d) => `Refund sent: ${s(d.amount)}`,
+    (d) => `রিফান্ড পাঠানো হয়েছে: ${s(d.amount)}`,
+    { mandatory: true },
+  ),
+  order(
+    "payout.requested",
+    (d) => `Payout requested: ${s(d.amount)}`,
+    (d) => `পেআউটের অনুরোধ: ${s(d.amount)}`,
+    { channels: ["in_app"] },
+  ),
+  order(
+    "payout.approved",
+    (d) => `Payout approved: ${s(d.amount)}`,
+    (d) => `পেআউট অনুমোদিত: ${s(d.amount)}`,
+    { mandatory: true },
+  ),
+  order(
+    "payout.paid",
+    (d) => `Payout sent: ${s(d.amount)}`,
+    (d) => `পেআউট পাঠানো হয়েছে: ${s(d.amount)}`,
+    { mandatory: true },
+  ),
+  order(
+    "payout.rejected",
+    (d) => `Payout not approved: ${s(d.note)}`,
+    (d) => `পেআউট অনুমোদন হয়নি: ${s(d.note)}`,
+    { mandatory: true },
+  ),
+  order(
     "payment.submitted",
     (d) => `Payment to check: ${s(d.amount)}`,
     (d) => `যাচাই করার পেমেন্ট: ${s(d.amount)}`,

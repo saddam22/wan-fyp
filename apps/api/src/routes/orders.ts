@@ -21,6 +21,7 @@ import {
   transition,
   type OrderRow,
 } from "../market/orders.ts";
+import { createRefundTx, notifyRefundDue } from "../market/refunds.ts";
 import { LEVELS, WORK_TYPES } from "./catalog.ts";
 
 export const ORDER_FILE_MAX = 10 * 1024 * 1024;
@@ -266,6 +267,7 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
   app.post<{ Params: { id: string } }>("/orders/:id/cancel", async (req) => {
     const s = await requireUser(db, config, hub, req);
     const b = parse(z.object({ reason: z.string().trim().max(300).default("") }), req.body ?? {});
+    let refundId: string | null = null;
     const res = await tx(db, async (c) => {
       const { o, rel } = await orderFor(c, req.params.id, s, true);
       const from =
@@ -307,6 +309,12 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
         "update payments set status = 'cancelled', updated_at = now() where order_id = $1 and status in ('pending', 'rejected')",
         [o.id],
       );
+      // Paid already: the money held for the order is refunded (approved by an accountant).
+      refundId = await createRefundTx(c, row, {
+        source: "cancellation",
+        reason: b.reason || "Cancelled by the student",
+        requestedBy: s.user.id,
+      });
       await c.query(
         "update order_offers set status = 'withdrawn', responded_at = now() where order_id = $1 and status = 'offered'",
         [o.id],
@@ -343,7 +351,7 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
         payload: { link: orderLink("mentor", res.row.id) },
         data,
       });
-    // A paid order needs a refund decision (payments, Phase 5).
+    if (refundId) await notifyRefundDue(db, notifications, res.row);
     return orderDto(db, res.row, "student");
   });
 

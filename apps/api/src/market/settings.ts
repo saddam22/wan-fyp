@@ -34,6 +34,8 @@ export const SETTINGS_SCHEMA = z.object({
   max_revisions: z.number().int().min(0).max(20),
   /** Approved orders close after this many days. */
   auto_close_days: z.number().int().min(1).max(60),
+  /** Smallest payout a mentor can request (owner decision; default ৳500). */
+  min_payout_minor: z.number().int().min(100).max(10_000_000),
   /** The mentor is reminded this long before the deadline. */
   deadline_reminder_hours: z.number().int().min(1).max(168),
 });

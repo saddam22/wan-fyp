@@ -4,6 +4,7 @@ import type { Deps } from "../deps.ts";
 import { ApiError } from "../lib/errors.ts";
 import { addEvent, loadOrder, orderLink, transition, type OrderRow } from "./orders.ts";
 import { postOrderAvailable, postOrderEarned } from "./ledger.ts";
+import { createRefundTx, notifyRefundDue } from "./refunds.ts";
 import { getSettings } from "./settings.ts";
 
 type Notifications = Deps["notifications"];
@@ -265,6 +266,7 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
       actorId: string,
       d: { outcome: "release" | "refund" | "partial"; refundMinor?: number; note: string },
     ) {
+      let refundId: string | null = null;
       const o = await tx(db, async (c) => {
         const dsp = (
           await c.query<{
@@ -318,6 +320,19 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
         );
         const row = await transition(c, o, ["disputed"], to, set);
         if (to === "approved") await postOrderEarned(c, row, actorId);
+        if (d.outcome !== "release") {
+          // Money: the refund first, then (partial) the rest is the mentor's, available now.
+          refundId = await createRefundTx(c, row, {
+            ...(d.outcome === "partial" ? { amountMinor: refund } : {}),
+            source: "dispute",
+            reason: d.note,
+            requestedBy: actorId,
+          });
+          if (d.outcome === "partial") {
+            await postOrderEarned(c, row, actorId);
+            await postOrderAvailable(c, row, actorId);
+          }
+        }
         await addEvent(c, o.id, {
           kind: "dispute_resolved",
           status: to,
@@ -329,6 +344,7 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
       });
       await notify("order.dispute", o, "student", { resolved: true });
       await notify("order.dispute", o, "mentor", { resolved: true });
+      if (refundId) await notifyRefundDue(db, notifications, o);
       return o;
     },
 

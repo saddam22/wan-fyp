@@ -26,6 +26,8 @@ export async function post(
     memo: string;
     orderId?: string | null;
     paymentId?: string | null;
+    refundId?: string | null;
+    payoutId?: string | null;
     actorId?: string | null;
   },
   entries: Entry[],
@@ -35,9 +37,18 @@ export async function post(
     throw new ApiError("server", "Unbalanced ledger posting");
   if (lines.length < 2) return null;
   const r = await c.query<{ id: string }>(
-    `insert into ledger_transactions (idempotency_key, kind, memo, order_id, payment_id, actor_id) values ($1, $2, $3, $4, $5, $6)
-     on conflict (idempotency_key) do nothing returning id`,
-    [t.key, t.kind, t.memo, t.orderId ?? null, t.paymentId ?? null, t.actorId ?? null],
+    `insert into ledger_transactions (idempotency_key, kind, memo, order_id, payment_id, refund_id, payout_id, actor_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (idempotency_key) do nothing returning id`,
+    [
+      t.key,
+      t.kind,
+      t.memo,
+      t.orderId ?? null,
+      t.paymentId ?? null,
+      t.refundId ?? null,
+      t.payoutId ?? null,
+      t.actorId ?? null,
+    ],
   );
   const id = r.rows[0]?.id;
   if (!id) return null; // already posted
@@ -111,18 +122,28 @@ export async function postOrderEarned(c: Queryable, o: OrderRow, actorId: string
   );
 }
 
-/** Order closed: the mentor's pending earnings from it become available for payout. */
+/** Signed sum of an account's entries that belong to one order. */
+export async function orderBalance(
+  c: Queryable,
+  orderId: string,
+  account: string,
+): Promise<number> {
+  return Number(
+    (
+      await c.query(
+        `select coalesce(sum(e.amount_minor), 0) as b from ledger_entries e join ledger_transactions t on t.id = e.txn_id
+          where t.order_id = $1 and e.account = $2`,
+        [orderId, account],
+      )
+    ).rows[0].b,
+  );
+}
+
+/** Order closed: what is still pending for the mentor from it becomes available for payout. */
 export async function postOrderAvailable(c: Queryable, o: OrderRow, actorId: string | null) {
   if (!o.mentor_id) return null;
-  const earned = (
-    await c.query<{ amount_minor: string }>(
-      `select e.amount_minor from ledger_entries e join ledger_transactions t on t.id = e.txn_id
-        where t.idempotency_key = $1 and e.account = $2`,
-      [`order:${o.id}:earned`, acct.pending(o.mentor_id)],
-    )
-  ).rows[0];
-  if (!earned) return null;
-  const m = -Number(earned.amount_minor);
+  const m = -(await orderBalance(c, o.id, acct.pending(o.mentor_id)));
+  if (m <= 0) return null;
   return post(
     c,
     {

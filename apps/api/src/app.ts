@@ -21,6 +21,7 @@ import { deliveryRoutes } from "./routes/delivery.ts";
 import { reviewRoutes } from "./routes/reviews.ts";
 import { paymentRoutes } from "./routes/payments.ts";
 import { ledgerRoutes } from "./routes/ledger.ts";
+import { moneyRoutes } from "./routes/money.ts";
 import { matchingRoutes } from "./routes/matching.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { chatRoutes } from "./routes/chat.ts";
@@ -129,6 +130,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(reviewRoutes, deps);
   await app.register(paymentRoutes, deps);
   await app.register(ledgerRoutes, deps);
+  await app.register(moneyRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });
