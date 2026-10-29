@@ -155,6 +155,17 @@ const order = (
 });
 
 const ORDER_TYPES: NotificationTypeSpec[] = [
+  {
+    // Jobs board (marketplace-jobs module): it sends ready text in Bengali.
+    type: "jobs.update",
+    category: "orders",
+    channels: ["in_app", "push"],
+    link: (p) => s(p.link) || "/jobs",
+    text: {
+      en: (d) => ({ title: s(d.title), body: s(d.body) }),
+      bn: (d) => ({ title: s(d.title), body: s(d.body) }),
+    },
+  },
   order(
     "contact.received",
     (d) => (d.institution ? "Message from an institution" : "New website message"),

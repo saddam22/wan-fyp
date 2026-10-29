@@ -6,6 +6,10 @@ packages:
   - modules/calling/packages/*
   - modules/social
   - modules/ads/packages/sdk
+  - modules/jobs/packages/contracts
+  - modules/jobs/packages/server
+  - modules/jobs/packages/ui
+  - modules/jobs/packages/config
 
 onlyBuiltDependencies:
   - esbuild

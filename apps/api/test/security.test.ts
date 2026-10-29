@@ -25,13 +25,23 @@ const PUBLIC = new Set([
   "GET /leaderboard",
   "GET /home",
   "POST /contact",
+  // Jobs board (marketplace-jobs module): published jobs and employers are public.
+  "GET /local/config",
+  "GET /local/jobs",
+  "GET /local/jobs/:id",
+  "GET /local/jobs/employers/:id",
+  "GET /local/storage/files/*",
 ]);
 const SIGNED = new Set([
   "PUT /chat-files/*",
   "PUT /order-files/*",
   "PUT /payment-files/*",
   "PUT /verification-files/*",
+  "PUT /local/storage/upload",
+  "PUT /local/storage/private/upload",
 ]);
+/** The module's other features are turned off; their catch-all stubs answer FEATURE_DISABLED. */
+const DISABLED = /^\/local\/(admin\/)?(services|map|events|emergency|marketplace)(\/|$)/;
 
 const ID = "00000000-0000-4000-8000-000000000000";
 const fill = (url: string) =>
@@ -43,7 +53,9 @@ const fill = (url: string) =>
 
 const routes = () => [
   ...new Map(
-    ctx.app.edkRoutes.filter((r) => r.method !== "HEAD").map((r) => [`${r.method} ${r.url}`, r]),
+    ctx.app.edkRoutes
+      .filter((r) => r.method !== "HEAD" && !DISABLED.test(r.url))
+      .map((r) => [`${r.method} ${r.url}`, r]),
   ).values(),
 ];
 
@@ -80,7 +92,10 @@ describe("access sweep over every API route", () => {
       const key = `${r.method} ${r.url}`;
       if (PUBLIC.has(key)) continue;
       const res = await call(null, r.method, r.url);
-      const ok = SIGNED.has(key) ? res.statusCode === 403 : [401, 403].includes(res.statusCode);
+      // Signed uploads: refused without a valid signature (or, before that, the body type).
+      const ok = SIGNED.has(key)
+        ? [403, 415].includes(res.statusCode)
+        : [401, 403].includes(res.statusCode);
       if (!ok) bad.push(`${key} → ${res.statusCode}`);
     }
     expect(bad).toEqual([]);
@@ -90,7 +105,7 @@ describe("access sweep over every API route", () => {
     const s = await student(ctx, "Sweep Student");
     const bad: string[] = [];
     for (const r of routes()) {
-      if (!/^\/(admin|accountant|mentor)\//.test(r.url)) continue;
+      if (!/^\/(local\/)?(admin|accountant|mentor)\//.test(r.url)) continue;
       const res = await call(s.b, r.method, r.url);
       if (![403, 404].includes(res.statusCode))
         bad.push(`${r.method} ${r.url} → ${res.statusCode}`);
@@ -103,12 +118,12 @@ describe("access sweep over every API route", () => {
     const acc = await accountant(ctx, "Sweep Accountant");
     const bad: string[] = [];
     for (const r of routes()) {
-      if (/^\/(admin|accountant)\//.test(r.url)) {
+      if (/^\/(local\/)?(admin|accountant)\//.test(r.url)) {
         const res = await call(m.b, r.method, r.url);
         if (![403, 404].includes(res.statusCode))
           bad.push(`mentor ${r.method} ${r.url} → ${res.statusCode}`);
       }
-      if (/^\/admin\//.test(r.url)) {
+      if (/^\/(local\/)?admin\//.test(r.url)) {
         const res = await call(acc.b, r.method, r.url);
         if (![403, 404].includes(res.statusCode))
           bad.push(`accountant ${r.method} ${r.url} → ${res.statusCode}`);

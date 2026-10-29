@@ -24,6 +24,8 @@ import { ledgerRoutes } from "./routes/ledger.ts";
 import { moneyRoutes } from "./routes/money.ts";
 import { contentRoutes } from "./routes/content.ts";
 import { growthRoutes } from "./routes/growth.ts";
+import { createJobsBoard, JOBS_PREFIX, migrateJobs } from "./jobs/module.ts";
+import { currentSession, SESSION_COOKIE } from "./lib/session.ts";
 import { siteRoutes } from "./routes/site.ts";
 import { trustRoutes } from "./routes/trust.ts";
 import { matchingRoutes } from "./routes/matching.ts";
@@ -126,8 +128,31 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
       const e = new ApiError("forbidden", "Cross-origin request refused");
       return reply.code(e.status).send(e.toJSON());
     }
-    // Chat routes need a chat token: refuse anonymous calls before the module validates input.
     const path = req.url.split("?")[0]!;
+    // Jobs board writes need a session (verified inside the module); signed uploads excepted.
+    if (
+      !safe &&
+      path.startsWith("/local/") &&
+      !path.startsWith("/local/storage/") &&
+      !req.cookies?.[SESSION_COOKIE]
+    ) {
+      const e = new ApiError("unauthorized", "Sign in first");
+      return reply.code(e.status).send(e.toJSON());
+    }
+    // Jobs board staff routes: EduKhata staff only. Its own role management is closed —
+    // roles come from EduKhata (the module's roles port).
+    if (path.startsWith("/local/admin/")) {
+      if (path.startsWith("/local/admin/roles")) {
+        const e = new ApiError("forbidden", "Roles are managed in EduKhata");
+        return reply.code(e.status).send(e.toJSON());
+      }
+      const s = await currentSession(opts.db, config, opts.hub, req).catch(() => null);
+      if (!s || !s.roles.some((r) => ["admin", "super_admin", "supporter"].includes(r))) {
+        const e = new ApiError(s ? "forbidden" : "unauthorized", "EduKhata staff only");
+        return reply.code(e.status).send(e.toJSON());
+      }
+    }
+    // Chat routes need a chat token: refuse anonymous calls before the module validates input.
     if (
       path.startsWith("/chat/") &&
       path !== "/chat/config" &&
@@ -160,6 +185,11 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(growthRoutes, deps);
   await app.register(contentRoutes, deps);
   await app.register(siteRoutes, deps);
+  // Jobs and tuition board (marketplace-jobs module, jobs only), after our own tables.
+  await migrateJobs(opts.db);
+  const jobs = createJobsBoard(opts.db, config, opts.hub, deps.notifications);
+  await app.register(jobs.plugin, { prefix: JOBS_PREFIX });
+  await jobs.mountFiles(app);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

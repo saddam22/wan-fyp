@@ -14,3 +14,7 @@
 	path = modules/ads
 	url = https://github.com/saddam22/central-ad-platform.git
 	ignore = dirty
+[submodule "modules/jobs"]
+	path = modules/jobs
+	url = https://github.com/saddam22/marketplace-jobs.git
+	ignore = dirty
