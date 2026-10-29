@@ -43,8 +43,8 @@ services:
       # Email codes are real (Resend); phone sign-up waits for an SMS gateway.
       DEMO_MODE: "true"
       DEV_OUTBOX: "false"
-      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY}
-      EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
+      RESEND_API_KEY: ${RESEND_API_KEY:-} # empty: codes only in the hub log
+      EMAIL_FROM: ${EMAIL_FROM:-}
     volumes:
       - hubdata:/data
     networks: [internal, edge]
