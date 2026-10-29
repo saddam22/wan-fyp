@@ -187,7 +187,8 @@ const ORDER_TYPES: NotificationTypeSpec[] = [
   order(
     "content.reviewed",
     (d) => (d.published ? "Your post is published" : `Your post needs changes: ${s(d.note)}`),
-    (d) => (d.published ? "আপনার পোস্ট প্রকাশিত হয়েছে" : `আপনার পোস্টে পরিবর্তন দরকার: ${s(d.note)}`),
+    (d) =>
+      d.published ? "আপনার পোস্ট প্রকাশিত হয়েছে" : `আপনার পোস্টে পরিবর্তন দরকার: ${s(d.note)}`,
   ),
   order(
     "refund.decided",
