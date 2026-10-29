@@ -4,7 +4,6 @@
 #
 #   apt-get update && apt-get install -y git
 #   git clone --branch ccr-5992ee5d-65mqhc https://github.com/saddam22/wan-fyp.git /opt/wanfyp/wan-fyp
-#       (username: your GitHub name, password: the read-only token below)
 #   bash /opt/wanfyp/wan-fyp/deploy/wanfyp.online/install.sh
 #
 # Before running: DNS A records for wanfyp.online, www.wanfyp.online and id.wanfyp.online
@@ -29,22 +28,38 @@ fi
 command -v git >/dev/null || apt-get install -y -qq git
 docker compose version >/dev/null
 
+say "Ports 80 and 443"
+# Caddy needs both ports for HTTPS. Another web server (LiteSpeed, nginx, Apache) holding
+# them is not stopped by this script: it may be serving other sites.
+BUSY=$(ss -Hltnp '( sport = :80 or sport = :443 )' | grep -v docker-proxy || true)
+if [[ -n $BUSY ]]; then
+  echo "Ports 80/443 are used by another program:"; echo "$BUSY"
+  echo "Free them (or ask for the reverse-proxy setup), then run this script again."
+  exit 1
+fi
+
 say "Code (GitHub)"
 # The repositories are private: a fine-grained GitHub token with read-only "Contents" on
 # wan-fyp, wan-identity-hub, chat-messaging, audio-video-calling, social-module,
-# central-ad-platform and marketplace-jobs. It is kept only in root's git credentials.
-if ! git config --global credential.helper >/dev/null; then
-  read -rsp "GitHub token (read-only): " GH_TOKEN; echo
-  git config --global credential.helper store
-  printf 'https://x-access-token:%s@github.com\n' "$GH_TOKEN" > /root/.git-credentials
-  chmod 600 /root/.git-credentials
-fi
+# central-ad-platform and marketplace-jobs. It is kept only in $ROOT/.git-credentials (mode 600).
+# The script uses its own git settings, so a credential helper, SSH key or "insteadOf"
+# rule already on this server can't get in the way.
 mkdir -p "$ROOT" && cd "$ROOT"
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$ROOT/.gitconfig" GIT_TERMINAL_PROMPT=0
+CRED="$ROOT/.git-credentials"
+if [[ ! -s $CRED ]]; then
+  read -rsp "GitHub token (read-only): " GH_TOKEN; echo
+  [[ -n $GH_TOKEN ]] || { echo "A token is needed for the private repositories."; exit 1; }
+  ( umask 077; printf 'https://x-access-token:%s@github.com\n' "$GH_TOKEN" > "$CRED" )
+fi
+git config --global credential.helper "store --file=$CRED"
 for repo in wan-fyp wan-identity-hub; do
   if [[ -d $repo/.git ]]; then
     git -C "$repo" fetch -q origin "$BRANCH" && git -C "$repo" checkout -q "$BRANCH" && git -C "$repo" reset -q --hard "origin/$BRANCH"
-  else
-    git clone -q --branch "$BRANCH" "https://github.com/saddam22/$repo.git"
+  elif ! git clone -q --branch "$BRANCH" "https://github.com/saddam22/$repo.git"; then
+    rm -f "$CRED"
+    echo "Could not read saddam22/$repo with that token: give it read-only Contents on all 7 repositories, then run again."
+    exit 1
   fi
 done
 git -C wan-fyp submodule update --init --recursive -q
