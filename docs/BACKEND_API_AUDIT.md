@@ -1,13 +1,76 @@
 # Backend API Audit
 
-## Existing APIs EduKhata would call (Phase 0)
+## EduKhata API (`apps/api`, Phase 2)
 
-| Service | Contract document | Used for |
-|---|---|---|
-| WAN Identity Hub | `wan-identity-hub/README.md` (API table) + `/oidc/.well-known/openid-configuration` | Login, profile claims, entitlements (after hub extension H2) |
-| Chat module | `chat-messaging/docs/api-contract.md` (REST + Socket.IO, `CONTRACT_VERSION`) | Order and support chat |
-| Calling module | `audio-video-calling/docs/calling/api-contract.md` | 1:1 calls |
-| Ad Platform | `central-ad-platform/docs/api/API.md`, SDK | Ad slots |
-| ICTSpark | no API docs; routes in `server/src/routes` | Rules reference only (no runtime calls proposed) |
+Fastify 5 + PostgreSQL, reached by browsers only through the web origin (`/api/*`). Errors: `{ "error": { "code", "message", "field?" } }`. Unsafe methods require `Origin: <WEB_URL>`.
 
-EduKhata's own API does not exist yet. It will be documented as OpenAPI from Zod contracts in Phase 4.
+| Method & path                                                             | Who                                                | Purpose                                                                                                         |
+| ------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `GET /health`                                                             | anyone                                             | liveness                                                                                                        |
+| `GET /auth/login?next=`                                                   | anyone (rate-limited)                              | start WAN sign-in (PKCE, state, nonce); `next` must be a same-site path                                         |
+| `GET /auth/callback`                                                      | hub redirect                                       | verify, upsert person by `sub`, start session; → `/onboarding`, `next` or role home                             |
+| `POST /auth/logout`                                                       | signed in                                          | revoke session, clear cookie                                                                                    |
+| `GET /me`                                                                 | signed in                                          | user, roles, onboarding state, home, student profile                                                            |
+| `POST /me/onboarding`                                                     | signed in                                          | `{kind: student, institution, classLevel, board?, subjects[]}` or `{kind: guardian}`; grants that role only     |
+| `GET /me/sessions`, `DELETE /me/sessions/{id}`                            | signed in                                          | own EduKhata sessions                                                                                           |
+| `GET /admin/users?q=&role=`                                               | admin, super admin                                 | users with roles                                                                                                |
+| `PUT /admin/users/{id}/roles`                                             | admin (student/guardian/mentor), super admin (all) | replace roles; last super admin protected; serialized with an advisory lock; actor roles re-read under the lock |
+| `POST /admin/users/{id}/status`                                           | admin (non-staff targets), super admin             | suspend/reactivate; ends sessions                                                                               |
+| `GET /admin/access-requests`, `POST /admin/access-requests/{id}/decision` | admin, super admin                                 | hub access requests for EduKhata                                                                                |
+| `GET /admin/audit`                                                        | super admin                                        | identity audit log                                                                                              |
+
+### Added in Phase 3
+
+| Method & path                                                                                                    | Who                           | Purpose                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `GET /me/notifications?filter=&cursor=&limit=` · `GET /me/notifications/counts`                                  | signed in                     | own notifications (cursor pages) + unread/unseen counts                                             |
+| `POST /me/notifications/seen` · `/read` `{ids}` · `/read-all` · `/{id}/open`                                     | signed in                     | mark seen/read; `open` checks ownership and returns the internal link                               |
+| `GET`/`PUT /me/notification-preferences`                                                                         | signed in                     | per-category in-app/push switches, quiet hours (mandatory types still arrive)                       |
+| `GET /push/config` · `POST`/`DELETE /me/push-subscriptions`                                                      | anyone / signed in            | Web Push key and subscriptions                                                                      |
+| `GET`/`POST`/`DELETE /me/guardian-code`                                                                          | student                       | whether a link code is active / create one (shown once, 24 h) / cancel                              |
+| `GET /me/guardians` · `PUT`/`DELETE /me/guardians/{guardianId}`                                                  | student                       | linked guardians, set their permissions, unlink                                                     |
+| `GET /guardian/children` · `POST /guardian/children` `{contact, code}` · `DELETE /guardian/children/{studentId}` | guardian                      | linked children, link (same 404 for wrong contact/code/expired; 10 wrong tries/hour; max 6), unlink |
+| `GET /me/referral`                                                                                               | student, guardian (not staff) | own code, link, invited list                                                                        |
+| `GET /referrals/resolve/{code}`                                                                                  | anyone (30/min)               | valid? + owner's first name                                                                         |
+| `GET /admin/referrals`                                                                                           | admin, super admin            | who referred whom                                                                                   |
+| `GET /me/chat-token`                                                                                             | onboarded user                | 15-minute token for the chat and call modules                                                       |
+| `/chat/*` (REST of the chat module, see its `docs/api-contract.md`)                                              | chat token                    | conversations, messages, uploads, attachments, search; group creation 403                           |
+| `PUT /chat-files/*?exp&size&sig`                                                                                 | signed URL                    | chat file upload target                                                                             |
+| WebSocket `/chat/socket.io/` · `/calls/ws`                                                                       | chat token                    | chat realtime · call signalling (calling module protocol)                                           |
+
+`POST /me/onboarding` now also takes `referralCode` (optional) and reads the `ek_ref` cookie.
+
+### Added in Phase 4 (marketplace core)
+
+| Method & path                                                                                                                           | Who                                                     | Purpose                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET /catalog`                                                                                                                          | anyone                                                  | active subjects, categories, price list, rules (no commission)               |
+| `GET /admin/catalog` · `PUT /admin/catalog/subjects/{id}` · `PUT /admin/catalog/categories/{slug}` · `PUT /admin/price-list/{workType}` | admin                                                   | catalog and prices (audited)                                                 |
+| `GET`/`PUT /admin/settings`                                                                                                             | super admin                                             | commission, revisions, matching timings, closure (validated ranges, audited) |
+| `GET`/`PUT /mentor/profile` · `GET /mentors` · `GET /mentors/{id}/reviews`                                                              | mentor / anyone                                         | profile for matching; public directory and reviews (no contact data)         |
+| `POST /orders/quote` · `POST /orders`                                                                                                   | anyone / student                                        | server-side price; create (status `awaiting_payment`)                        |
+| `GET /orders?as=student                                                                                                                 | mentor                                                  | guardian                                                                     | staff`·`GET /orders/{id}`                              | by relation                               | lists and detail shaped for the viewer; others get 404      |
+| `POST /orders/{id}/cancel`                                                                                                              | student (before assignment), staff (with reason)        | cancel                                                                       |
+| `POST /orders/{id}/files` · `PUT /order-files/*` · `POST …/files/{fid}/complete` · `GET`/`DELETE …/files/{fid}`                         | student (requirements), assigned mentor (preview/final) | signed upload, content check, private download                               |
+| `GET /mentor/offers` · `POST /mentor/offers/{id}/accept                                                                                 | decline`                                                | mentor                                                                       | offers; first valid acceptance wins (409 for the rest) |
+| `POST /mentor/orders/{id}/start                                                                                                         | release                                                 | deliver`                                                                     | assigned mentor                                        | start, hand back before starting, deliver |
+| `POST /orders/{id}/approve` · `POST /orders/{id}/revisions` · `POST /orders/{id}/review`                                                | student                                                 | approve, revision (free or priced), review                                   |
+| `POST /orders/{id}/disputes`                                                                                                            | student or mentor                                       | open (one at a time)                                                         |
+| `GET /admin/orders/{id}/candidates                                                                                                      | offers`·`POST /admin/orders/{id}/assign                 | unassign                                                                     | close`                                                 | admin                                     | manual assignment, history, reassignment, closure (audited) |
+| `GET /admin/disputes` · `POST /admin/disputes/{id}/resolve`                                                                             | admin                                                   | decide release / partial / refund (audited)                                  |
+| `GET /admin/reviews` · `POST /admin/reviews/{id}/moderate`                                                                              | admin                                                   | publish / hide (audited)                                                     |
+
+Internal hooks for Phase 5: `matching.startMatching(orderId)` (payment approved) and `delivery.activatePaidRevision(orderId, n)`. Background sweep every 30 s: offer expiry and next wave, auto-close, deadline reminders.
+
+Validation: Zod. Rate limits: 600/min per client globally, 30 per 5 min on `/auth/login` and `/auth/callback`.
+
+## Existing APIs EduKhata calls
+
+| Service                       | Contract                                           | Used for                              |
+| ----------------------------- | -------------------------------------------------- | ------------------------------------- |
+| WAN Identity Hub OIDC         | `/oidc/.well-known/openid-configuration`           | sign-in                               |
+| WAN Identity Hub platform API | hub README → Platform API                          | entitlement re-check, access requests |
+| Chat module                   | `chat-messaging/docs/api-contract.md`              | mounted in the API (in-process)       |
+| Calling module                | `audio-video-calling/docs/calling/api-contract.md` | mounted in the API (in-process)       |
+| Social module                 | `social-module` notifications services             | in-process, PostgreSQL repositories   |
+| Ad Platform                   | `central-ad-platform/docs/api/API.md`, SDK         | browser → `/v1/serve`, impressions    |

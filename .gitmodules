@@ -1,0 +1,16 @@
+[submodule "modules/chat"]
+	path = modules/chat
+	url = https://github.com/saddam22/chat-messaging.git
+	ignore = dirty
+[submodule "modules/calling"]
+	path = modules/calling
+	url = https://github.com/saddam22/audio-video-calling.git
+	ignore = dirty
+[submodule "modules/social"]
+	path = modules/social
+	url = https://github.com/saddam22/social-module.git
+	ignore = dirty
+[submodule "modules/ads"]
+	path = modules/ads
+	url = https://github.com/saddam22/central-ad-platform.git
+	ignore = dirty

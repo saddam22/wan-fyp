@@ -1,0 +1,29 @@
+{
+  "name": "edukhata",
+  "private": true,
+  "description": "EduKhata — Assignment & Practical Khata Marketplace (WANBAHJAHKAS ecosystem)",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @edukhata/web dev",
+    "build": "pnpm build:modules && pnpm -r --filter \"./apps/**\" --filter \"./packages/**\" --workspace-concurrency=1 build",
+    "lint": "pnpm -r --filter \"./apps/**\" --filter \"./packages/**\" lint",
+    "typecheck": "pnpm -r --filter \"./apps/**\" --filter \"./packages/**\" typecheck",
+    "test": "pnpm -r --filter \"./apps/**\" --filter \"./packages/**\" --workspace-concurrency=1 test",
+    "e2e": "pnpm --filter @edukhata/web e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm build && pnpm lint && pnpm typecheck && pnpm test",
+    "traceability": "python3 scripts/gen_traceability.py",
+    "dev:api": "pnpm --filter @edukhata/api dev",
+    "e2e:wan": "pnpm --filter @edukhata/web e2e:wan",
+    "build:modules": "pnpm -r --filter \"./modules/**\" --workspace-concurrency=1 build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "prettier": "3.9.10",
+    "typescript": "~6.0.3"
+  }
+}

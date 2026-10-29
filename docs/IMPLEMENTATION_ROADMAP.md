@@ -1,25 +1,43 @@
 # Implementation Roadmap
 
-| Phase | Scope | Exit gate | Status |
-|---|---|---|---|
-| 0 | Repository audit, mockup review, inventory, reuse matrix, architecture, traceability | Q1, Q2 answered; Q3–Q13 open (see PROJECT_OVERVIEW) | **Done** |
-| 1 | Premium frontend: design tokens, components, all public pages, all 6 role dashboards + guardian, all states, mock adapters, responsive, build + Playwright screenshots | **Your review & approval (STOP)** | Not started |
-| 2 | WAN Identity integration (OIDC BFF), hub changes H1–H2, roles, profile gates, auth tests | Login/role tests green | Not started |
-| 3 | Chat, calling, notifications/push, ads slots, ICTSpark rule ports (referral, guardian, reviews) | Integration tests | Not started |
-| 4 | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes | E2E order journey | Not started |
-| 5 | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices | Ledger balances under tests; no duplicate payout | Not started |
-| 6 | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons | | Not started |
-| 7 | Security hardening, unauthorized-access tests, performance, dependency review | Security checklist | Not started |
-| 8 | Docker, staging, env validation, backups/restore drill, deploy & rollback guide | **Your production approval** | Not started |
+| Phase | Scope                                                                                                                                                                  | Exit gate                                           | Status                                                 |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------ |
+| 0     | Repository audit, mockup review, inventory, reuse matrix, architecture, traceability                                                                                   | Q1, Q2 answered; Q3–Q13 open (see PROJECT_OVERVIEW) | **Done**                                               |
+| 1     | Premium frontend: design tokens, components, all public pages, all 6 role dashboards + guardian, all states, mock adapters, responsive, build + Playwright screenshots | **Your review & approval (STOP)**                   | **Done — approved**                                    |
+| 2     | WAN Identity integration (OIDC BFF), hub changes H1–H2, roles, profile gates, auth tests                                                                               | Login/role tests green                              | **Done — approved**                                    |
+| 3     | Chat, calling, notifications/push, ads slots, ICTSpark rule ports (referral, guardian; reviews → Phase 4)                                                              | Integration tests                                   | **Done — waiting for your review**                     |
+| 4     | Catalog, services, orders, matching (concurrency-safe), files, delivery countdown, revisions, approval, disputes, order chats, reviews                                 | E2E order journey                                   | **Done** (full browser journey after Phase 5 payments) |
+| 5     | Payments (manual/TrxID + proof), ledger, commission, earnings, payouts, refunds, reconciliation, invoices                                                              | Ledger balances under tests; no duplicate payout    | Not started                                            |
+| 6     | Verification queue, ranking, skill tests, badges, boosts, subscriptions, CMS/blog, coupons                                                                             |                                                     | Not started                                            |
+| 7     | Security hardening, unauthorized-access tests, performance, dependency review                                                                                          | Security checklist                                  | Not started                                            |
+| 8     | Docker, staging, env validation, backups/restore drill, deploy & rollback guide                                                                                        | **Your production approval**                        | Not started                                            |
 
-## Phase 1 work breakdown (HD mockups, Q12, still wanted)
+## Phase 1 outcome
 
-1. Scaffold pnpm monorepo: `apps/web` (Next.js 16), `apps/api` (Fastify 5, empty health route only), `packages/contracts` (Zod DTOs shared by mocks and API), `packages/ui`.
-2. Design tokens + primitives (Button, Input, Select, Badge, Card, Tabs, Table, Modal, Drawer, Toast, Skeleton, EmptyState, Stepper, Countdown, Rating, Avatar, FileDrop, StatCard, Chart).
-3. Public shell (header ×2 rows, mobile drawer, footer) + homepage sections.
-4. Remaining public pages.
-5. Dashboard shell + Student → Mentor → Admin → Accountant → Supporter → Guardian.
-6. Order detail page (shared by student/mentor/admin views with permission-based actions).
-7. bn/en strings; Bengali digits.
-8. Checks: typecheck, lint, unit (Vitest), Playwright smoke + screenshots at 390/768/1440 px; `next build`.
-9. Update FRONTEND_AUDIT, traceability (FE column), CHANGELOG; present for review.
+Delivered as planned, with two deviations: shared UI lives in `apps/web/src/components` (no separate `packages/ui` yet), and `apps/api` was not scaffolded — it starts in Phase 2 with real routes. Details: `FRONTEND_AUDIT.md` → Phase 1, `TESTING_REPORT.md`.
+
+## Phase 2 outcome
+
+Done: hub H1 + H2 (+ a hub bug fix), `apps/api` (Fastify 5 + PostgreSQL), real WAN sign-in with server-side sessions, onboarding gate, roles in EduKhata, admin role/status management, hub access requests, audit log, entitlement re-check. Not done in Phase 2: RP/back-channel logout (H3), SMS (H4), a UI for listing own sessions (API exists), audit hash chain.
+
+## Phase 3 outcome
+
+Done: notifications (social-module), guardian linking and referral attribution (ICTSpark rules, hardened), support chat (chat-messaging), 1:1 calls (audio-video-calling), ad slots (central-ad-platform SDK). Every module's own test suite ran first. Two small additive upstream changes were made: chat `features.groups` and the ad SDK compiled build. Moved: **reviews to Phase 4** (they need completed orders); **referral rewards to Phase 5** (they need payments). Not done: TURN server, native ringing, email/SMS providers, chat files on S3. Details: `CHAT_AND_COMMUNICATION_INTEGRATION.md`, `ADVERTISING_INTEGRATION.md`, `TESTING_REPORT.md`.
+
+## Phase 4 outcome
+
+Done (API + web in `AUTH_MODE=wan`):
+
+- Admin-managed catalog, price list and business rules.
+- Mentor profiles.
+- Orders priced by the server, with private files (magic-byte checked, EXIF removed, previews watermarked).
+- Automatic matching: ranked waves of time-limited offers, first valid acceptance wins atomically, capacity enforced, expiry and retry, fallback to the admin queue, manual assignment and reassignment, release, cancellation.
+- Delivery, approval, free and paid revisions, disputes (release, partial or full refund), auto-closure and deadline reminders.
+- Order chats through the chat module, with former contacts made read-only.
+- Reviews with moderation of contact details.
+
+The full browser journey needs payment approval to start matching; it comes with Phase 5. Mentor "services" (per-mentor price lists) are not built: matching uses the platform price list, so any eligible mentor can take any order at one price. Per-mentor pricing would change matching and is left for a decision.
+
+## Next — Phase 5 (payments)
+
+ICTSpark's manual payment flow (method selection, TrxID + proof, accountant verification, duplicate protection) with its known gaps closed (S1–S4). It feeds `matching.startMatching` and `delivery.activatePaidRevision`. Then the ledger, 20/80 commission, mentor earnings, payouts with approval, refunds (cancellations and dispute decisions), reconciliation and invoices.

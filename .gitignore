@@ -5,3 +5,10 @@ dist/
 .env.*
 !.env.example
 *.log
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Local chat uploads (apps/api CHAT_UPLOAD_DIR)
+.data/
+__pycache__/

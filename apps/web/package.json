@@ -1,0 +1,47 @@
+{
+  "name": "@edukhata/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "EduKhata web app \u2014 public site and role dashboards (Phase 1: demo data only)",
+  "scripts": {
+    "dev": "next dev --port 3200",
+    "build": "next build",
+    "start": "next start --port 3200",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "e2e:wan": "playwright test -c playwright.wan.config.ts"
+  },
+  "dependencies": {
+    "@adp/sdk": "workspace:*",
+    "@agg/calling-client": "workspace:*",
+    "@agg/calling-react": "workspace:*",
+    "@chat-module/client": "workspace:*",
+    "@chat-module/core": "workspace:*",
+    "@chat-module/react": "workspace:*",
+    "@edukhata/contracts": "workspace:*",
+    "@fontsource/hind-siliguri": "5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "lucide-react": "1.56.0",
+    "next": "16.4.2",
+    "qrcode": "1.5.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "server-only": "0.0.1",
+    "tailwindcss": "4.3.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^24.0.0",
+    "@types/qrcode": "1.5.5",
+    "@types/react": "~19.2.18",
+    "@types/react-dom": "~19.2.7",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.2",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.4"
+  }
+}
