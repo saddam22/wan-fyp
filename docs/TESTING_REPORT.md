@@ -1,5 +1,17 @@
 # Testing Report
 
+## Owner decisions Q7, Q20, Q24 (2026-10-29)
+
+| Suite                                             | Result                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| marketplace-jobs' own suites (before integrating) | contracts 17, server 65 (real PostgreSQL), UI 8 — all pass                                                                                                                                                                                                                                                                                                        |
+| API integration                                   | **103 / 103** (+3): payout fee (cap, received amount, ledger unchanged); document retention (pending kept, 5 months kept, 7 months deleted, verified status stays); jobs board (post, public listing, fake PDF refused, CV private to the employer, status → EduKhata notification, employer verification by EduKhata admins only, module role management closed) |
+| Access sweep                                      | now also covers the module's routes: anonymous writes 401, `/local/admin/*` staff only, role management 403                                                                                                                                                                                                                                                       |
+| Real end-to-end                                   | **9 / 9**: new — a coaching centre posts a tuition job, a mentor finds it on `/jobs` and applies with a PDF CV in the module's dialog, the centre sees the application and the CV                                                                                                                                                                                 |
+| Demo UI suite                                     | 404 pass (the `/jobs` placeholder added)                                                                                                                                                                                                                                                                                                                          |
+
+Bugs found: a missing import in the API's new request gate (caught by the sweep as 500s); the jobs provider needed a stable token getter.
+
 ## Owner decisions applied (2026-10-29)
 
 | Suite           | Result                                                                                                                                                                                                                                                                                                                                                                                               |

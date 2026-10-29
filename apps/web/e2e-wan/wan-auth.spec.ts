@@ -685,6 +685,50 @@ test("website: contact inbox, homepage banners, opt-in leaderboard, no sample da
   await expect(p.getByText(/^Rafi [A-Z]\.$/).first()).toBeVisible();
 });
 
+test("jobs and tuition board: a coaching centre posts, a mentor applies with a CV", async () => {
+  test.skip(!journey, "needs the earlier tests' people");
+  const { student: p, mentor: mp } = journey!;
+  const api = (path: string, data: object) =>
+    p.request.post(`/api/local${path}`, { data, headers: { origin: "http://localhost:3200" } });
+  const e = await api("/jobs/employers", { name: `Udvash Mirpur ${run}`, area: "Mirpur, Dhaka" });
+  expect(e.status(), await e.text()).toBe(201);
+  const title = `HSC Biology tutor ${run}`;
+  const j = await api("/jobs", {
+    employerId: ((await e.json()) as { id: string }).id,
+    title,
+    description:
+      "Three days a week for an HSC 2nd year student. Practical khata guidance included.",
+    category: "education",
+    employmentType: "part_time",
+    deadline: new Date(Date.now() + 10 * 86_400_000).toISOString(),
+  });
+  expect(j.status(), await j.text()).toBe(201);
+  const jobId = ((await j.json()) as { id: string }).id;
+
+  // Public listing, then the mentor applies with a PDF CV.
+  await mp.goto("/jobs");
+  await mp.getByText(title).first().click();
+  await expect(mp).toHaveURL(new RegExp(`/jobs/${jobId}$`));
+  // The module learns who is signed in from /api/local/config; wait for it.
+  await mp.reload();
+  await mp.waitForLoadState("networkidle");
+  await mp.getByRole("button", { name: "Apply" }).first().click();
+  const dialog = mp.getByRole("dialog");
+  await dialog.locator('input[type="file"]').setInputFiles({
+    name: "cv.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"),
+  });
+  await dialog.locator("textarea").fill("I teach HSC biology.");
+  await dialog.getByRole("button", { name: "Submit" }).click();
+  await expect(mp.getByText(/Applied — Submitted/).first()).toBeVisible({ timeout: 15_000 });
+
+  // The coaching centre sees the application with the CV.
+  await p.goto(`/jobs/${jobId}/applications`);
+  await expect(p.getByText("I teach HSC biology.")).toBeVisible();
+  await expect(p.getByText("View CV").first()).toBeVisible();
+});
+
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {
   const evil = await request.post("/api/me/onboarding", {
     headers: { origin: "https://evil.example" },

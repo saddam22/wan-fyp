@@ -35,6 +35,7 @@ export const bn: Messages = {
     howItWorks: "কীভাবে কাজ করে",
     pricing: "মূল্য",
     blog: "ব্লগ",
+    jobs: "চাকরি ও টিউশন",
     contact: "যোগাযোগ",
     allMentors: "সব মেন্টর",
     topRated: "সেরা রেটিং",

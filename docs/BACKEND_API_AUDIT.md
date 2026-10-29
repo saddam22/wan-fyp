@@ -107,6 +107,15 @@ Internal hooks for Phase 5: `matching.startMatching(orderId)` (payment approved)
 | `GET /admin/messages` · `POST /admin/messages/{id}`                                                            | admin                                       | inbox; handled (with a note) / spam / reopen (audited)       |
 | `GET /content/banners` · `GET`/`POST /admin/banners` · `PUT /admin/banners/{id}` · `POST /admin/banners/order` | anyone / admin                              | homepage slides (audited)                                    |
 
+### Jobs and tuition board (marketplace-jobs module, after Phase 8)
+
+Mounted at `/local` (the module's own API reference: `modules/jobs/docs/api/README.md`); only the jobs routes are on: employers, jobs, applications, CV download, employer verification, reports, files. EduKhata adds:
+
+- answers module writes without a session with 401;
+- limits `/local/admin/*` to EduKhata admins, super admins and supporters;
+- closes `/local/admin/roles*`;
+- serves signed uploads at `/local/storage/*` (CVs never public).
+
 Validation: Zod. Rate limits: 600/min per client globally, 30 per 5 min on `/auth/login` and `/auth/callback`.
 
 ## Existing APIs EduKhata calls

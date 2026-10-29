@@ -24,6 +24,8 @@ const LIVE_ONLY = [
   /^\/accountant\/(accounts|reconciliation)$/,
   /^\/(admin\/skill-tests|mentor\/blog)$/,
   /^\/p\/\[slug\]$/,
+  // The jobs board needs the backend; only its placeholder /jobs is in the demo.
+  /^\/jobs\/.+/,
 ];
 
 /** Every page route in src/app, with dynamic segments filled in. */

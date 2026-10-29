@@ -10,8 +10,8 @@ Columns FE / API / DB / Tests are filled as each feature is built. Acceptance cr
 
 | Status | Count |
 |---|---|
-| Existing and verified | 154 |
-| Missing | 78 |
+| Existing and verified | 155 |
+| Missing | 77 |
 | Existing but incomplete | 41 |
 | Requires extension | 19 |
 | Requires integration | 9 |
@@ -198,7 +198,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M07-17 | Reconciliation job | Existing but incomplete | central-ad-platform jobs/reconcile.ts pattern | accountant | /accountant overview (checks list) | per-account totals + manual tick-off (no statement import) | payments.reconciled_at | money.test |
 | M07-18 | Invoice generation | Existing and verified | ictspark invoice.service | student | /accountant/invoices | GET /payments/:id/invoice | payments | money.test, e2e-wan |
 | M07-19 | Financial audit history | Existing but incomplete | central-ad-platform audit chain pattern | accountant | /accountant/audit | audit_log for every money action + immutable ledger (no hash chain) | audit_log | money.test |
-| M07-20 | Fee / tax / VAT / adjustment policy | Existing but incomplete | owner decision | owner | — | no VAT (Q19); payer bears send fees; payout fees not modelled (Q7) | — | — |
+| M07-20 | Fee / tax / VAT / adjustment policy | Existing and verified | owner decision | owner | — | no VAT (Q19); payer bears send fees; payout transfer fee is the mentor's (Q7) | payouts.fee_minor | money.test |
 | M07-21 | Hold-until-approval of mentor share ('money hold') | Existing and verified | legal/provider check — no escrow verified | owner | — | released only when both sides confirm (student approval + mentor confirmation) | orders.mentor_confirmed_at, ledger | delivery.test, e2e-wan |
 
 ## M08 — Revision, approval & dispute
@@ -314,7 +314,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
-| M14-01 | Mentor identity verification (NID/passport, human review) | Existing and verified | wan-identity-hub documents (no KYC review workflow) | admin | /mentor/verification, /admin/verification | documents + independent reviewer | mentor_verifications, verification_files | trust.test, e2e-wan |
+| M14-01 | Mentor identity verification (NID/passport, human review) | Existing and verified | wan-identity-hub documents (no KYC review workflow) | admin | /mentor/verification, /admin/verification | documents + independent reviewer; files deleted 6 months after the decision | mentor_verifications, verification_files.deleted_at | trust.test, e2e-wan |
 | M14-02 | Student / institution verification | Requires extension | ictspark HSC verification (code lab) | admin | /admin/verification | — | — | — |
 | M14-03 | Qualification verification | Existing and verified | — | admin | /admin/verification | qualification document required | verification_files | trust.test |
 | M14-04 | Document review queue | Existing and verified | — | admin | /admin/verification | /admin/verification | mentor_verifications | trust.test, e2e-wan |
@@ -385,7 +385,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M17-12 | Webhook signature verification | Missing | — | system | — | — | — | — |
 | M17-13 | Duplicate transaction / payout protection | Existing and verified | — | system | — | unique TrxID/reference indexes, idempotent ledger | payments, ledger | payments.test, money.test |
 | M17-14 | Audit logs | Existing but incomplete | — | system | — | staff, money, verification, content actions (no hash chain) | audit_log | several tests |
-| M17-15 | Privacy controls + data retention | Missing | — | system | — | — | — | — |
+| M17-15 | Privacy controls + data retention | Existing but incomplete | — | system | — | verification documents 6 months; notification retention (social module) | verification_files | trust.test |
 | M17-16 | Backup & recovery | Existing and verified | — | ops | — | scripts/backup.sh, restore.sh (refuses non-empty targets), backup-drill.sh | pg_dump custom + files tar | drill run 2026-10-29 |
 | M17-17 | Dependency review | Existing and verified | — | ops | — | pnpm audit; fastify upgraded; upstream dev-only advisories listed | — | SECURITY_AUDIT.md |
 | M17-18 | Unauthorized-access tests | Existing and verified | — | system | — | sweep: anonymous, student, mentor, accountant, admin, cross-origin | — | security.test |
@@ -395,7 +395,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
 | M18-01 | Unit tests | Missing | — | dev | vitest (contracts, i18n) | — | — | — |
-| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 100 tests |
+| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 103 tests |
 | M18-03 | Component tests | Missing | — | dev | — | — | — | — |
 | M18-04 | E2E workflow tests (Playwright) | Existing and verified | — | dev | Playwright e2e/ | full order journey with payment and payout | — | e2e-wan |
 | M18-05 | Role/permission tests | Existing and verified | — | dev | e2e/access.spec.ts (UI level) | API sweep + UI access + real sign-in | — | security.test, access.spec, e2e-wan |

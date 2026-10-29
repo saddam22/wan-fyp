@@ -34,6 +34,7 @@ export const en = {
     howItWorks: "How It Works",
     pricing: "Pricing",
     blog: "Blog",
+    jobs: "Jobs",
     contact: "Contact",
     allMentors: "All mentors",
     topRated: "Top rated",

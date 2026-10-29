@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   // Socket.IO (chat) needs its trailing slash: /api/chat/socket.io/ must not be redirected.
   skipTrailingSlashRedirect: true,
   // The contracts package ships TypeScript sources.
-  transpilePackages: ["@edukhata/contracts"],
+  transpilePackages: ["@edukhata/contracts", "@local-hub/ui", "@local-hub/contracts"],
   // Browsers talk only to this origin; /api/* is proxied to the EduKhata API (apps/api).
   async headers() {
     const https = (process.env.NEXT_PUBLIC_SITE_URL ?? "").startsWith("https://");

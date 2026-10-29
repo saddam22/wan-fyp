@@ -273,6 +273,7 @@ export function Header({ user }: { user: HeaderUser | null }) {
     { label: t.nav.orderNow, href: "/order/new" },
     { label: t.nav.howItWorks, href: "/how-it-works" },
     { label: t.nav.pricing, href: "/pricing" },
+    { label: t.nav.jobs, href: "/jobs" },
     { label: t.nav.blog, href: "/blog" },
     { label: t.nav.contact, href: "/contact" },
   ];

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-29 — Owner decisions: payout fee, document retention, jobs board
+
+- The payout transfer fee is the mentor's (recorded by the sending accountant, max 5%); mentors see the estimate, the fee and what they received.
+- Verification documents are deleted 6 months after the decision.
+- marketplace-jobs integrated permanently as the jobs and tuition board (`modules/jobs`, jobs feature only): EduKhata sign-in, staff, notifications, private CVs; web at `/jobs`, "Jobs" in the header.
+- Tests: API 103; real end-to-end 9; UI 404; module suites 90.
+
 ## 2026-10-29 — Owner decisions: both sides confirm; no sample data left on live pages
 
 - The mentor's share is released only when both sides confirm (student approves, mentor confirms completion); staff close and auto-close can't skip it; one reminder to the mentor.

@@ -4,23 +4,23 @@ For each candidate integration: source, what exists, integration method, auth, d
 
 ## Summary
 
-| Capability                                         | Source                      | Proposed reuse                                                       | Integration method                                                         |
-| -------------------------------------------------- | --------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Identity, login, registration, 2FA, password reset | wan-identity-hub            | **Reuse (mandatory)**                                                | OIDC Code + PKCE; EduKhata is a confidential client                        |
-| Platform access / roles                            | wan-identity-hub + EduKhata | **Split**: hub = "may use EduKhata"; EduKhata DB = marketplace roles | Hub extension needed (server-to-server entitlement API)                    |
-| Chat                                               | chat-messaging              | **Reuse**                                                            | git submodule + `ChatHost` adapter in EduKhata API (Fastify 5, PostgreSQL) |
-| 1:1 calls                                          | audio-video-calling         | **Reuse** (1:1 only)                                                 | git submodule + host adapter                                               |
-| Notifications, push, follow, groups                | social-module               | **Reuse**                                                            | npm/git dependency + Postgres repositories                                 |
-| Ads / sponsored content                            | central-ad-platform         | **Reuse** for labelled ad slots                                      | `@adp/sdk` `<AdSlot>` + register app & placements                          |
-| Paid profile boosts / featured mentors             | —                           | **Build in EduKhata**                                                | Marketplace monetization, not advertising                                  |
-| Manual payment + TrxID verification                | ictspark                    | **Port business rules** (not code)                                   | Re-implement in TS/PostgreSQL with fixes                                   |
-| Ledger, maker-checker, reconciliation, audit chain | central-ad-platform         | **Port patterns**                                                    | Re-implement                                                               |
-| Referral                                           | ictspark                    | **Port rules**                                                       | Re-implement, ledger-backed                                                |
-| Guardian linking                                   | ictspark                    | **Port rules** (one-time link code)                                  | Re-implement                                                               |
-| Reviews (text/video, moderation)                   | ictspark                    | **Port rules**                                                       | Re-implement                                                               |
-| Blog, forum, rewards, marketing                    | ictspark                    | **Link out / later**                                                 | Decision Q3                                                                |
-| Listings / jobs                                    | marketplace-jobs            | **Do not use as order engine**; reuse UI stack conventions           | —                                                                          |
-| Mentor skill tests                                 | ictspark exam engine        | **Later** (Phase 6)                                                  | Decision Q3                                                                |
+| Capability                                         | Source                      | Proposed reuse                                                                                                   | Integration method                                                         |
+| -------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Identity, login, registration, 2FA, password reset | wan-identity-hub            | **Reuse (mandatory)**                                                                                            | OIDC Code + PKCE; EduKhata is a confidential client                        |
+| Platform access / roles                            | wan-identity-hub + EduKhata | **Split**: hub = "may use EduKhata"; EduKhata DB = marketplace roles                                             | Hub extension needed (server-to-server entitlement API)                    |
+| Chat                                               | chat-messaging              | **Reuse**                                                                                                        | git submodule + `ChatHost` adapter in EduKhata API (Fastify 5, PostgreSQL) |
+| 1:1 calls                                          | audio-video-calling         | **Reuse** (1:1 only)                                                                                             | git submodule + host adapter                                               |
+| Notifications, push, follow, groups                | social-module               | **Reuse**                                                                                                        | npm/git dependency + Postgres repositories                                 |
+| Ads / sponsored content                            | central-ad-platform         | **Reuse** for labelled ad slots                                                                                  | `@adp/sdk` `<AdSlot>` + register app & placements                          |
+| Paid profile boosts / featured mentors             | —                           | **Build in EduKhata**                                                                                            | Marketplace monetization, not advertising                                  |
+| Manual payment + TrxID verification                | ictspark                    | **Port business rules** (not code)                                                                               | Re-implement in TS/PostgreSQL with fixes                                   |
+| Ledger, maker-checker, reconciliation, audit chain | central-ad-platform         | **Port patterns**                                                                                                | Re-implement                                                               |
+| Referral                                           | ictspark                    | **Port rules**                                                                                                   | Re-implement, ledger-backed                                                |
+| Guardian linking                                   | ictspark                    | **Port rules** (one-time link code)                                                                              | Re-implement                                                               |
+| Reviews (text/video, moderation)                   | ictspark                    | **Port rules**                                                                                                   | Re-implement                                                               |
+| Blog, forum, rewards, marketing                    | ictspark                    | **Link out / later**                                                                                             | Decision Q3                                                                |
+| Listings / jobs                                    | marketplace-jobs            | **Integrated (owner decision Q24):** the jobs submodule as EduKhata's jobs & tuition board; not the order engine | `modules/jobs` (9e31a9e), API `/local/*`, web `/jobs`                      |
+| Mentor skill tests                                 | ictspark exam engine        | **Later** (Phase 6)                                                                                              | Decision Q3                                                                |
 
 ## Status after Phase 3
 
@@ -82,7 +82,17 @@ Submodules are pinned to tested commits (`.gitmodules`, `ignore = dirty`); chat 
 
 ### 6. Marketplace / Jobs
 
-1. Source `saddam22/marketplace-jobs`. 2. Listings, jobs, services directory — no orders/payments. 3. **Not integrated** as the order engine. Optional later: cross-post "mentor wanted" jobs. 4–8. N/A until approved.
+1. Source `saddam22/marketplace-jobs` (pinned 9e31a9e as `modules/jobs`; its suites ran first: contracts 17, server 65, UI 8).
+2. Only the **jobs** feature is on (services, maps, events, emergency, marketplace classifieds off by flag).
+3. Mounted in the API at `/local` with EduKhata ports:
+   - session auth (onboarded users);
+   - names-only profiles;
+   - EduKhata admins and supporters as its staff;
+   - notifications into the EduKhata inbox (`jobs.update`);
+   - private CV storage and public processed images on the `/data` volume.
+4. EduKhata gates `/local/admin/*` to staff and closes the module's own role management.
+5. The web mounts its screens at `/jobs` (same routes as the module's app), with EduKhata's colours and its en/bn locale.
+6. Tests: `jobs.test`, the access sweep, and the WAN e2e (a coaching centre posts, a mentor applies with a CV).
 
 ### 7. ICTSpark
 

@@ -833,6 +833,12 @@ P2: list[tuple[str, str, str, str, str, str]] = [
     ("M14", "Student ranking", "EV", "GET /leaderboard (opt-in, short names, earned points)", "student_profiles", "site.test, e2e-wan"),
     ("M14", "Mentor ranking", "EV", "organic order + public leaderboard", "—", "trust.test, site.test"),
     ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "100 tests"),
+    # Owner decisions Q7/Q20/Q24 (2026-10-29)
+    ("M01", "Jobs / opportunities cross-link", "EV", "marketplace-jobs (jobs only) at /local/jobs*, web /jobs", "lh_* tables (module migrations)", "jobs.test, e2e-wan"),
+    ("M14", "Mentor identity verification", "EV", "documents + independent reviewer; files deleted 6 months after the decision", "mentor_verifications, verification_files.deleted_at", "trust.test, e2e-wan"),
+    ("M17", "Privacy controls + data retention", "EI", "verification documents 6 months; notification retention (social module)", "verification_files", "trust.test"),
+    ("M07", "Fee / tax / VAT", "EV", "no VAT (Q19); payer bears send fees; payout transfer fee is the mentor's (Q7)", "payouts.fee_minor", "money.test"),
+    ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "103 tests"),
 ]
 
 

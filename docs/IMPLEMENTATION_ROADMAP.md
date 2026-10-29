@@ -117,3 +117,9 @@ Before production:
   - Homepage banners admin.
   - The student's marketplace profile.
 - **`marketplace-jobs` (Q24).** Planned for about 3 months from now; not built yet.
+
+## Owner decisions Q7, Q20, Q24 applied (2026-10-29)
+
+- **Payout fee (Q7).** The transfer fee of a payout is the mentor's. The accountant records the provider's fee (at most 5%); the mentor receives the payout minus the fee and sees both amounts.
+- **Verification documents (Q20).** Kept 6 months after the decision, then deleted by an hourly purge. The verified status stays.
+- **marketplace-jobs (Q24).** A permanent part of EduKhata as the jobs and tuition board: `/jobs` on the web, `/local/*` on the API. See `EXISTING_MODULE_REUSE_MATRIX.md`.
