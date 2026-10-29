@@ -74,4 +74,12 @@ Migrations run in name order, each once, in a transaction (`schema_migrations`).
 | `coupons`, `coupon_redemptions`; `orders.list_price_minor/discount_minor/coupon_id` | coupons and their use          | code format and unique; percent ≤ 100; one redemption per order                                    |
 | `content_posts`                                                                     | blog posts and pages           | unique (kind, slug); status list                                                                   |
 
+### Added after Phase 8 (`014_two_sided_confirmation.sql`, `015_site.sql`)
+
+| Table / column                                             | Purpose                                    | Key constraints                                |
+| ---------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------- |
+| `orders.mentor_confirmed_at`, `orders.confirm_reminded_at` | the mentor's confirmation and its reminder | close refused without it (API)                 |
+| `contact_messages`                                         | website messages                           | topic and status lists                         |
+| `home_banners`                                             | homepage slides                            | link must be a site path or `https://` (check) |
+
 Module tables are created by the modules themselves on API start, so they follow upgrades of the pinned submodule. The calling tables use `text` ids without a foreign key to `users` (module design). Money tables (Phase 5) use signed integer paisa (`bigint`).

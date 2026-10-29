@@ -106,3 +106,14 @@ Before production:
 - A TURN server.
 - Off-site backups.
 - The open decisions in `PROJECT_OVERVIEW.md`, especially Q5 (holding funds).
+
+## After Phase 8 — owner decisions applied (2026-10-29)
+
+- **Both sides confirm (Q5).** The mentor's share is released only after the student approves **and** the mentor confirms completion. Staff and the timer can't skip the mentor's confirmation, and the mentor is reminded once.
+- **Remaining sample-data pages are live.**
+  - Leaderboard: earned points only; students only if they opt in, shown with a short name.
+  - Homepage: real counts, top mentors and students, real reviews only, admin banners, latest posts. Other students' orders are no longer shown publicly.
+  - Contact form → admin inbox, which also serves as the institutions' academic-integrity channel.
+  - Homepage banners admin.
+  - The student's marketplace profile.
+- **`marketplace-jobs` (Q24).** Planned for about 3 months from now; not built yet.

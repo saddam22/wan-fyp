@@ -47,6 +47,7 @@ export interface OrderRow {
   delivered_at: Date | null;
   approved_at: Date | null;
   closed_at: Date | null;
+  mentor_confirmed_at: Date | null;
   cancelled_at: Date | null;
 }
 
@@ -275,6 +276,8 @@ export async function orderDto(db: Queryable, o: OrderRow, rel: Relation) {
     createdAt: o.created_at.toISOString(),
     deadline: o.deadline.toISOString(),
     ...(o.delivered_at ? { deliveredAt: o.delivered_at.toISOString() } : {}),
+    ...(o.approved_at ? { approvedAt: o.approved_at.toISOString() } : {}),
+    ...(o.mentor_confirmed_at ? { mentorConfirmedAt: o.mentor_confirmed_at.toISOString() } : {}),
     freeRevisions: o.free_revisions,
     revisions: revisions.rows.map((r) => ({
       n: r.n,

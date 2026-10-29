@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
 import { ContactForm } from "@/components/public/ContactForm";
+import { authMode } from "@/lib/auth-mode";
 import { PageHero } from "@/components/public/kit";
 import { Card } from "@/components/ui";
 
@@ -17,7 +18,7 @@ export default function ContactPage() {
       <div className="container-x grid gap-6 py-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="p-6">
           <h2 className="mb-4 text-lg font-bold">Send us a message</h2>
-          <ContactForm />
+          <ContactForm live={authMode() === "wan"} />
         </Card>
         <div className="space-y-3">
           {[

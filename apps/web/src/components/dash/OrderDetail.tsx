@@ -73,6 +73,8 @@ const STAGES: { label: string; reached: OrderStatus[] }[] = [
   },
   { label: "Delivered", reached: ["delivered", "revision_requested", "approved", "closed"] },
   { label: "Approved", reached: ["approved", "closed"] },
+  // Both sides confirmed: the mentor's share is released.
+  { label: "Completed", reached: ["closed"] },
 ];
 
 function FileRow({ f, locked, href }: { f: OrderFile; locked: boolean; href?: string }) {
@@ -328,7 +330,27 @@ export function OrderDetail({
           </Button>
         </>
       )}
-      {live && viewer === "admin" && order.status === "approved" && (
+      {live && viewer === "mentor" && order.status === "approved" && (
+        <Button
+          variant="success"
+          disabled={busy}
+          onClick={() =>
+            act(
+              `/mentor/orders/${order.id}/confirm`,
+              undefined,
+              "Confirmed — your share is now available",
+            )
+          }
+        >
+          <CheckCircle2 size={16} /> Confirm completion
+        </Button>
+      )}
+      {live && (viewer === "student" || viewer === "guardian") && order.status === "approved" && (
+        <span className="text-xs font-semibold text-muted">
+          Approved — waiting for the mentor to confirm completion
+        </span>
+      )}
+      {live && viewer === "admin" && order.status === "approved" && order.mentorConfirmedAt && (
         <Button
           variant="outline"
           disabled={busy}
@@ -756,8 +778,9 @@ export function OrderDetail({
         }
       >
         <p className="text-sm text-slate-700">
-          Approving unlocks the final files and releases the mentor&apos;s share (
-          {formatMoney(mentorShare, lang)}). You can&apos;t request revisions afterwards.
+          Approving unlocks the final files. The mentor&apos;s share (
+          {formatMoney(mentorShare, lang)}) is released when the mentor also confirms completion —
+          both sides confirm. You can&apos;t request revisions afterwards.
         </p>
       </Modal>
 

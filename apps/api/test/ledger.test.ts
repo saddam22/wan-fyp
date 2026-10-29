@@ -28,7 +28,8 @@ describe("double-entry ledger, commission, mentor earnings", () => {
     b = await balances(acc);
     expect(b.trialBalanceMinor).toBe(0);
 
-    await ctx.app.edkDeps.delivery.close(o.id, null, "test");
+    // Released only when the mentor also confirms.
+    expect((await m.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(200);
     const e = (await m.b.get("/mentor/earnings")).json();
     expect(e).toMatchObject({ pendingMinor: 0, availableMinor: 40000 });
     expect(e.lines.map((l: { kind: string }) => l.kind)).toEqual([

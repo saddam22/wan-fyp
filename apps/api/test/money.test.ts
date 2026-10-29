@@ -127,7 +127,7 @@ describe("refunds, payouts, reconciliation, invoices", () => {
     const acc2 = await accountant(ctx, "Second Accountant");
     await deliverWork(ctx, m, o.id);
     await s.b.post(`/orders/${o.id}/approve`);
-    await ctx.app.edkDeps.delivery.close(o.id, null, "test");
+    expect((await m.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(200);
     expect(await earnings(m)).toMatchObject({ availableMinor: 40000 });
 
     const req = (body: Record<string, unknown>) =>

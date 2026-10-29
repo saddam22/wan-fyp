@@ -96,6 +96,17 @@ Internal hooks for Phase 5: `matching.startMatching(orderId)` (payment approved)
 | `GET`/`POST /me/posts` · `PUT /me/posts/{id}` · `POST /me/posts/{id}/submit`                                                                                          | mentor, staff                                | write and submit posts                                                                        |
 | `GET`/`POST /admin/content` · `PUT /admin/content/{id}` · `POST /admin/content/{id}/review`                                                                           | admin                                        | pages and posts; publish or send back (not one's own)                                         |
 
+### Added after Phase 8 (owner decisions)
+
+| Method & path                                                                                                  | Who                                         | Purpose                                                      |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------ |
+| `POST /mentor/orders/{id}/confirm`                                                                             | the assigned mentor                         | second confirmation; closes the order and releases the share |
+| `GET`/`PUT /me/student-profile`                                                                                | student                                     | institution, class, board, subjects, leaderboard opt-in      |
+| `GET /leaderboard` · `GET /home`                                                                               | anyone                                      | earned rankings; homepage figures, reviews, banners, posts   |
+| `POST /contact`                                                                                                | anyone (5 per 10 min per address, honeypot) | website message                                              |
+| `GET /admin/messages` · `POST /admin/messages/{id}`                                                            | admin                                       | inbox; handled (with a note) / spam / reopen (audited)       |
+| `GET /content/banners` · `GET`/`POST /admin/banners` · `PUT /admin/banners/{id}` · `POST /admin/banners/order` | anyone / admin                              | homepage slides (audited)                                    |
+
 Validation: Zod. Rate limits: 600/min per client globally, 30 per 5 min on `/auth/login` and `/auth/callback`.
 
 ## Existing APIs EduKhata calls

@@ -362,7 +362,7 @@ test("a student messages and calls EduKhata support in real time; no direct chat
   await expect(up.locator(".agc-timer")).toHaveCount(0);
 });
 
-test("full order journey: order → pay → verify → match → deliver → approve → close → payout", async ({
+test("full order journey: order → pay → verify → match → deliver → approve → both confirm → payout", async ({
   browser,
 }) => {
   const suffix = STUDENT.split(" ")[1]!;
@@ -495,14 +495,18 @@ test("full order journey: order → pay → verify → match → deliver → app
   await mp.getByRole("button", { name: "Submit delivery" }).click();
   await expect(mp.getByText("Delivery submitted")).toBeVisible();
 
-  // The student approves; EduKhata closes the order; the mentor's 80% becomes available.
+  // The student approves and the mentor confirms: only then the mentor's 80% becomes available.
   await p.goto(`/student/orders/${orderId}`);
   await p.getByRole("button", { name: "Approve work" }).click();
   await p.getByRole("button", { name: "Approve & release payment" }).click();
   await expect(p.getByText("Work approved")).toBeVisible();
+  // Both sides confirm: approved by the student, now the mentor confirms; staff can't skip it.
+  await expect(p.getByText("waiting for the mentor to confirm completion")).toBeVisible();
   await ap.goto(`/admin/orders/${orderId}`);
-  await ap.getByRole("button", { name: "Close order" }).click();
-  await expect(ap.getByText("Order closed")).toBeVisible();
+  await expect(ap.getByRole("button", { name: "Close order" })).toHaveCount(0);
+  await mp.goto(`/mentor/orders/${orderId}`);
+  await mp.getByRole("button", { name: "Confirm completion" }).click();
+  await expect(mp.getByText("Confirmed — your share is now available")).toBeVisible();
   await mp.goto("/mentor/earnings");
   await expect(mp.getByText("৳520").first()).toBeVisible();
 
@@ -632,6 +636,53 @@ test("verification, coupons and the blog: reviewed by staff, shown honestly", as
   // The public directory shows the verified mentor with the badge.
   await p.goto("/mentors");
   await expect(p.getByText("Verified mentor").first()).toBeVisible();
+});
+
+test("website: contact inbox, homepage banners, opt-in leaderboard, no sample data", async () => {
+  test.skip(!superAdmin || !journey, "needs the earlier tests' people");
+  const ap = superAdmin!.page;
+  const { student: p } = journey!;
+
+  // A message from an institution reaches the admins' inbox.
+  await p.goto("/contact");
+  await p.getByLabel("Your name").fill(`Dhaka College ${run}`);
+  await p.getByLabel("Email or mobile").fill("office@example.edu");
+  await p.getByLabel("Topic").selectOption("institution");
+  await p.getByLabel("Message").fill("We would like to talk about academic integrity.");
+  await p.getByRole("button", { name: "Send message" }).click();
+  await expect(p.getByText("Message sent")).toBeVisible();
+  await ap.goto("/admin/messages");
+  await ap
+    .getByRole("row")
+    .filter({ hasText: `Dhaka College ${run}` })
+    .click();
+  await ap.getByLabel("What was answered").fill("Called the office, meeting set");
+  await ap.getByRole("button", { name: "Mark handled" }).click();
+  await expect(ap.getByText("Marked as handled")).toBeVisible();
+
+  // A banner made by an admin is the homepage's slide (banners of earlier runs switched off).
+  execFileSync("psql", [`${PG}/edukhata_e2e`, "-c", "update home_banners set active = false"], {
+    stdio: "pipe",
+  });
+  await ap.goto("/admin/banners");
+  await ap.getByRole("button", { name: "New slide" }).click();
+  await ap.getByLabel("Highlighted line").fill(`Exam season ${run}`);
+  await ap.getByLabel("Button text (optional)").fill("Order now");
+  await ap.getByLabel("Button link").fill("/order/new");
+  await ap.getByRole("button", { name: "Save" }).click();
+  await expect(ap.getByText("Banner saved")).toBeVisible();
+  await p.goto("/");
+  await expect(p.getByText(`Exam season ${run}`)).toBeVisible({ timeout: 20_000 });
+  // Real figures only: no sample testimonials or demo figures note.
+  await expect(p.getByText("Demo figures")).toHaveCount(0);
+
+  // The student opts in to the leaderboard and appears with a short name.
+  await p.goto("/student/profile");
+  await p.getByLabel(/Show me on the public student leaderboard/).check();
+  await p.getByRole("button", { name: "Save profile" }).click();
+  await expect(p.getByText("Profile saved")).toBeVisible();
+  await p.goto("/leaderboard");
+  await expect(p.getByText(/^Rafi [A-Z]\.$/).first()).toBeVisible();
 });
 
 test("the API refuses cross-site writes and unauthenticated admin calls", async ({ request }) => {

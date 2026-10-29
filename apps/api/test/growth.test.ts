@@ -17,7 +17,7 @@ describe("promotions (paid, labelled, from earnings)", () => {
     await deliverWork(ctx, m, o.id);
     expect((await s.b.post(`/orders/${o.id}/approve`)).statusCode).toBe(200);
     const su = await staff("Promo Super", "super_admin");
-    expect((await su.b.post(`/admin/orders/${o.id}/close`)).statusCode).toBe(200);
+    expect((await m.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(200);
 
     const before = (await m.b.get("/mentor/promotions")).json() as {
       availableMinor: number;

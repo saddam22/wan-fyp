@@ -145,6 +145,9 @@ export interface Order {
   createdAt: string;
   deadline: string;
   deliveredAt?: string;
+  approvedAt?: string;
+  /** The mentor confirmed completion (second confirmation; the share is released). */
+  mentorConfirmedAt?: string;
   freeRevisions: number;
   revisions: Revision[];
   files: OrderFile[];

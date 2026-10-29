@@ -10,10 +10,10 @@ Columns FE / API / DB / Tests are filled as each feature is built. Acceptance cr
 
 | Status | Count |
 |---|---|
-| Existing and verified | 148 |
-| Missing | 81 |
-| Existing but incomplete | 42 |
-| Requires extension | 21 |
+| Existing and verified | 154 |
+| Missing | 78 |
+| Existing but incomplete | 41 |
+| Requires extension | 19 |
 | Requires integration | 9 |
 | Available through existing API | 4 |
 | Requires manual verification | 4 |
@@ -25,7 +25,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
-| M01-01 | Homepage (mockup layout: 3-column with rankings sidebars) | Missing | — | public | / (app/(public)/page.tsx) | — | — | — |
+| M01-01 | Homepage (mockup layout: 3-column with rankings sidebars) | Existing and verified | — | public | / (app/(public)/page.tsx) | GET /home: real counts, rankings, reviews, banners, posts | — | site.test, e2e-wan |
 | M01-02 | Header, logo, utility bar (search, country/currency, cart, bell, login/register) | Missing | — | public | components/public/Header.tsx | — | — | — |
 | M01-03 | Primary navigation + dropdown menus | Missing | — | public | components/public/Header.tsx | — | — | — |
 | M01-04 | Global search (assignments, subjects, mentors) | Missing | — | public | /search | — | — | — |
@@ -80,7 +80,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
 | M03-01 | Overview (stats, current order tracker, recommended mentors) | Missing | — | student | /student | — | — | — |
-| M03-02 | Profile management | Missing | — | student | /student/profile | — | — | — |
+| M03-02 | Profile management | Existing and verified | — | student | /student/profile | GET/PUT /me/student-profile | student_profiles | site.test, e2e-wan |
 | M03-03 | Class, institution, subject info | Missing | — | student | /student/profile, /onboarding | — | — | — |
 | M03-04 | Assignment search | Missing | — | student | /search, /assignments | — | — | — |
 | M03-05 | Mentor search | Missing | — | student | /mentors | — | — | — |
@@ -199,7 +199,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M07-18 | Invoice generation | Existing and verified | ictspark invoice.service | student | /accountant/invoices | GET /payments/:id/invoice | payments | money.test, e2e-wan |
 | M07-19 | Financial audit history | Existing but incomplete | central-ad-platform audit chain pattern | accountant | /accountant/audit | audit_log for every money action + immutable ledger (no hash chain) | audit_log | money.test |
 | M07-20 | Fee / tax / VAT / adjustment policy | Existing but incomplete | owner decision | owner | — | no VAT (Q19); payer bears send fees; payout fees not modelled (Q7) | — | — |
-| M07-21 | Hold-until-approval of mentor share ('money hold') | Existing but incomplete | legal/provider check — no escrow verified | owner | — | escrow:order account until approval (legal check Q5 open) | ledger_entries | ledger.test |
+| M07-21 | Hold-until-approval of mentor share ('money hold') | Existing and verified | legal/provider check — no escrow verified | owner | — | released only when both sides confirm (student approval + mentor confirmation) | orders.mentor_confirmed_at, ledger | delivery.test, e2e-wan |
 
 ## M08 — Revision, approval & dispute
 
@@ -216,7 +216,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M08-09 | Disputes | Existing and verified | — | student | OrderDetail dispute modal | POST /orders/:id/disputes (one open) | disputes | delivery.test |
 | M08-10 | Admin dispute resolution | Existing and verified | — | admin | /admin/disputes | POST /admin/disputes/:id/resolve | disputes | delivery.test |
 | M08-11 | Refund decisions | Existing and verified | — | admin | /admin/disputes | dispute refund → refunds table → paid | refunds | money.test |
-| M08-12 | Order closure | Existing and verified | — | system | — | auto-close + admin close | orders | delivery.test |
+| M08-12 | Order closure | Existing and verified | — | system | — | mentor confirmation closes; staff/timer can't skip it | orders | delivery.test, e2e-wan |
 
 ## M09 — Chat, notifications & communication
 
@@ -271,11 +271,11 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M11-15 | Referral configuration | Existing but incomplete | ictspark | admin | /admin/referrals | GET /admin/referrals (attributions; reward settings in Phase 5) | referrals | referrals.test |
 | M11-16 | Advertising configuration (placements on/off) | Requires integration | central-ad-platform platform admin | super_admin | /admin/ads | — | — | — |
 | M11-17 | Sponsored placement management | Existing but incomplete | — | admin | /admin/ads | featured boosts (bought by mentors), stop by admin | mentor_promotions | growth.test |
-| M11-18 | Homepage banner management | Requires extension | ictspark site settings | admin | /admin/banners | — | — | — |
+| M11-18 | Homepage banner management | Existing and verified | ictspark site settings | admin | /admin/banners | /admin/banners | home_banners | site.test, e2e-wan |
 | M11-19 | CMS / page management | Existing and verified | — | admin | /admin/pages | /admin/content (pages at /p/:slug) | content_posts | growth.test |
 | M11-20 | Blog management | Existing and verified | ictspark | admin | /admin/blog | /admin/content review | content_posts | growth.test, e2e-wan |
 | M11-21 | Review moderation | Existing and verified | ictspark | admin | /admin/reviews | /admin/reviews | reviews | orderchat.test |
-| M11-22 | Website messaging | Requires extension | ictspark | admin | /admin/messages | — | — | — |
+| M11-22 | Website messaging | Existing and verified | ictspark | admin | /admin/messages | /contact → /admin/messages (no email provider: replies noted) | contact_messages | site.test, e2e-wan |
 | M11-23 | Notification management | Existing but incomplete | social-module | admin | /admin/notifications | per-user preferences only (broadcast still demo) | notification_preferences | notifications.test |
 | M11-24 | Reward management | Requires extension | ictspark | admin | /admin/rewards | — | — | — |
 | M11-25 | System settings | Existing but incomplete | — | super_admin | /admin/settings | business rules (super admin) | platform_settings | catalog.test |
@@ -322,8 +322,8 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | M14-06 | Subject skill tests | Existing and verified | ictspark exams | mentor | /mentor/skill-tests | server-graded, timed, retake period | skill_tests, skill_attempts | trust.test |
 | M14-07 | Skill badges | Existing and verified | ictspark | mentor | /mentor/badges | badge per passed subject | skill_attempts | trust.test |
 | M14-08 | Verified status (separate from paid badges) | Existing and verified | — | admin | badges/labels | verified_at; paid badges labelled separately | mentor_profiles | trust.test, growth.test |
-| M14-09 | Mentor ranking | Existing and verified | — | system | /leaderboard, /mentor/badges | organic directory order + matching score | — | trust.test |
-| M14-10 | Student ranking | Missing | — | system | /leaderboard | — | — | — |
+| M14-09 | Mentor ranking | Existing and verified | — | system | /leaderboard, /mentor/badges | organic order + public leaderboard | — | trust.test, site.test |
+| M14-10 | Student ranking | Existing and verified | — | system | /leaderboard | GET /leaderboard (opt-in, short names, earned points) | student_profiles | site.test, e2e-wan |
 | M14-11 | Referral code + link + tracking | Existing and verified | ictspark referral.service, attribution | student | /student/referrals | /me/referral, /referrals/resolve, ?ref cookie, onboarding attribution | referral_codes, referrals | referrals.test, e2e-wan |
 | M14-12 | Reward ledger | Requires extension | ictspark ReferralReward | accountant | — | — | — | — |
 | M14-13 | Featured mentor promotion (labelled) | Existing and verified | — | mentor | MentorCard paid ribbon | boost → GET /mentors/featured, labelled | mentor_promotions | growth.test |
@@ -395,7 +395,7 @@ Phase 1: **215** features have a frontend (FE column). Phases 2–4: identity, n
 | ID | Feature | Status | Existing source | Permission | FE | API | DB | Tests |
 |---|---|---|---|---|---|---|---|---|
 | M18-01 | Unit tests | Missing | — | dev | vitest (contracts, i18n) | — | — | — |
-| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 96 tests |
+| M18-02 | API integration tests (real PostgreSQL) | Existing but incomplete | — | dev | — | vitest + PostgreSQL | edukhata_test | 100 tests |
 | M18-03 | Component tests | Missing | — | dev | — | — | — | — |
 | M18-04 | E2E workflow tests (Playwright) | Existing and verified | — | dev | Playwright e2e/ | full order journey with payment and payout | — | e2e-wan |
 | M18-05 | Role/permission tests | Existing and verified | — | dev | e2e/access.spec.ts (UI level) | API sweep + UI access + real sign-in | — | security.test, access.spec, e2e-wan |

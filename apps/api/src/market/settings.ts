@@ -32,7 +32,7 @@ export const SETTINGS_SCHEMA = z.object({
   /** Price of a revision beyond the free ones, as a share of the order price. */
   paid_revision_fee_pct: z.number().min(0).max(1),
   max_revisions: z.number().int().min(0).max(20),
-  /** Approved orders close after this many days. */
+  /** Orders confirmed by both sides but still open close after this many days (normally they close at once). */
   auto_close_days: z.number().int().min(1).max(60),
   /** Smallest payout a mentor can request (owner decision; default ৳500). */
   min_payout_minor: z.number().int().min(100).max(10_000_000),

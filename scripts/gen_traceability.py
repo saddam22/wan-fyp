@@ -823,6 +823,16 @@ P2: list[tuple[str, str, str, str, str, str]] = [
     ("M18", "Backup/restore drill", "EV", "scripts/backup-drill.sh", "—", "drill passed on e2e and test databases"),
     ("M18", "Production build validation", "EV", "pnpm check + image build", "—", "pnpm check"),
     ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "96 tests"),
+    # Owner decisions applied (2026-10-29)
+    ("M07", "Hold-until-approval", "EV", "released only when both sides confirm (student approval + mentor confirmation)", "orders.mentor_confirmed_at, ledger", "delivery.test, e2e-wan"),
+    ("M08", "Order closure", "EV", "mentor confirmation closes; staff/timer can't skip it", "orders", "delivery.test, e2e-wan"),
+    ("M03", "Profile management", "EV", "GET/PUT /me/student-profile", "student_profiles", "site.test, e2e-wan"),
+    ("M01", "Homepage", "EV", "GET /home: real counts, rankings, reviews, banners, posts", "—", "site.test, e2e-wan"),
+    ("M11", "Homepage banner", "EV", "/admin/banners", "home_banners", "site.test, e2e-wan"),
+    ("M11", "Website messaging", "EV", "/contact → /admin/messages (no email provider: replies noted)", "contact_messages", "site.test, e2e-wan"),
+    ("M14", "Student ranking", "EV", "GET /leaderboard (opt-in, short names, earned points)", "student_profiles", "site.test, e2e-wan"),
+    ("M14", "Mentor ranking", "EV", "organic order + public leaderboard", "—", "trust.test, site.test"),
+    ("M18", "API integration tests", "EI", "vitest + PostgreSQL", "edukhata_test", "100 tests"),
 ]
 
 

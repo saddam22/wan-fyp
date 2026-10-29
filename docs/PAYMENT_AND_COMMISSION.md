@@ -30,8 +30,8 @@ EduKhata keeps that flow and its validation rules (`validateSubmission`, shared 
    - **Approve:** the money is posted to the ledger. The order enters matching, or the paid revision goes to the mentor.
    - **Reject:** a reason is required. The payer is notified and may submit again, and the order goes back to `awaiting_payment`.
 4. **Work.** Matching, delivery and approval follow, as in Phase 4.
-5. **Approval.** When the student approves, the order is **earned**: commission goes to revenue and the mentor's share becomes **pending**.
-6. **Closure.** At closure (by staff, or automatically `auto_close_days` = 7 days after approval), the mentor's share becomes **available**.
+5. **Approval (first confirmation).** When the student approves, the order is **earned**: commission goes to revenue and the mentor's share becomes **pending**.
+6. **Mentor confirmation (second confirmation).** The mentor who did the work confirms completion at `POST /mentor/orders/:id/confirm` ("Confirm completion" on the order page). Only then does the order close and the share become **available**. This is the owner's decision Q5: both sides must confirm. Neither staff nor the timer can close an approved order without the mentor's confirmation. A mentor who hasn't confirmed a day after approval gets one reminder. A dispute can still be opened while the order waits for the mentor.
 7. **Payout.** The mentor requests a payout from the available balance at `/mentor/payouts`. Only one open request is allowed, and the minimum is `min_payout_minor` (৳500). The amount is reserved at once. An accountant approves it at `/accountant/payouts`. A **different** person sends the money and records the account it left from plus the transfer reference. Nobody can handle their own payout. A rejection returns the amount to the mentor's available balance.
 8. **Refund.** A refund comes from a cancellation or a dispute decision. It is recorded at once as "refunds payable". A **second** person (not the requester) approves it at `/accountant/refunds`. Then someone records the transfer back to the payer's number.
 9. **Reconciliation.** `/accountant/reconciliation` shows, per receiving account, what was received, refunded and paid out, plus the book balance. Approved payments are ticked off one by one against the provider statement.
@@ -69,7 +69,7 @@ Amounts are signed integer paisa: positive is a debit, negative is a credit. Thr
   - **Disputes.** The admin decides: release to the mentor, a partial refund of any amount, or a full refund. A refund can never exceed what was paid and not yet made available. After approval, the refund takes back the mentor's pending share and the commission in the order's proportion.
   - **Payment state.** A cancellation while a payment is being checked is refused until the payment is decided. When everything paid has gone back, the payments are marked `refunded`.
 - **Tax.** **No VAT is applied** (owner decision **Q19**). Invoices state "No VAT applied". If VAT registration happens later, a tax line and a `vat:payable` account are the extension point.
-- **Mentor holding period.** The share becomes available at closure: 7 days after approval, or earlier if staff close the order. The minimum payout is ৳500.
+- **Release.** The share becomes available when both sides have confirmed (student approval + mentor confirmation). The minimum payout is ৳500.
 
 ## What is not built
 

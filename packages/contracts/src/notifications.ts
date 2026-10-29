@@ -156,6 +156,12 @@ const order = (
 
 const ORDER_TYPES: NotificationTypeSpec[] = [
   order(
+    "contact.received",
+    (d) => (d.institution ? "Message from an institution" : "New website message"),
+    (d) => (d.institution ? "একটি প্রতিষ্ঠান থেকে বার্তা" : "ওয়েবসাইটে নতুন বার্তা"),
+    { channels: ["in_app"] },
+  ),
+  order(
     "verification.submitted",
     () => "A mentor asked for verification",
     () => "একজন মেন্টর যাচাইয়ের আবেদন করেছেন",
@@ -266,8 +272,13 @@ const ORDER_TYPES: NotificationTypeSpec[] = [
   ),
   order(
     "order.approved",
-    () => "The student approved your work",
-    () => "শিক্ষার্থী আপনার কাজ অনুমোদন করেছেন",
+    () => "The student approved your work — confirm completion to release your share",
+    () => "শিক্ষার্থী আপনার কাজ অনুমোদন করেছেন — আপনার অংশ পেতে সম্পন্ন নিশ্চিত করুন",
+  ),
+  order(
+    "order.confirm_needed",
+    () => "Confirm completion to release your share",
+    () => "আপনার অংশ পেতে কাজ সম্পন্ন নিশ্চিত করুন",
   ),
   order(
     "order.deadline",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 — Owner decisions: both sides confirm; no sample data left on live pages
+
+- The mentor's share is released only when both sides confirm (student approves, mentor confirms completion); staff close and auto-close can't skip it; one reminder to the mentor.
+- Live leaderboard (earned points; opt-in students with short names), live homepage (real counts, rankings, real reviews, banners, posts; other students' orders not shown), contact form → admin inbox (honeypot, rate limit), banners admin, live student profile.
+- Tests: API 100; real end-to-end 8; UI 401.
+
 ## 2026-10-29 — Phase 8: staging packaging (no deployment)
 
 - Dockerfile (api, web), staging compose with PostgreSQL, internal-only API and Caddy HTTPS; `.env.staging.example`.

@@ -218,17 +218,46 @@ describe("delivery, revisions, approval, disputes", () => {
     expect(Number(actions)).toBe(3);
   });
 
-  it("closure: approved orders close automatically or by staff; deadline reminders go out once", async () => {
+  it("both sides confirm: the student approves, the mentor confirms, then the share is released", async () => {
     const { o, m, s } = await working();
+    // Nothing to confirm before the student approves.
+    expect((await m.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(409);
     await deliver(m, o.id);
-    await s.b.post(`/orders/${o.id}/approve`);
-    await ctx.db.query("update orders set approved_at = now() - interval '8 days' where id = $1", [
+    expect((await m.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(409);
+    expect((await s.b.post(`/orders/${o.id}/approve`)).statusCode).toBe(200);
+    expect((await s.b.get(`/orders/${o.id}`)).json()).toMatchObject({ status: "approved" });
+
+    // Not without the mentor: neither staff nor the timer can close it.
+    const su = await signIn(ctx, "Closing Super");
+    await grant(ctx, su.sub, "super_admin");
+    expect((await su.b.post(`/admin/orders/${o.id}/close`)).statusCode).toBe(409);
+    await ctx.db.query("update orders set approved_at = now() - interval '30 days' where id = $1", [
       o.id,
     ]);
-    const r1 = await ctx.app.edkDeps.delivery.sweep();
-    expect(r1.closed).toBeGreaterThanOrEqual(1);
-    expect((await s.b.get(`/orders/${o.id}`)).json().status).toBe("closed");
+    const r = await ctx.app.edkDeps.delivery.sweep();
+    expect(r.confirmReminded).toBeGreaterThanOrEqual(1);
+    expect((await s.b.get(`/orders/${o.id}`)).json().status).toBe("approved");
+    expect((await ctx.app.edkDeps.delivery.sweep()).confirmReminded).toBe(0);
+    await new Promise((x) => setTimeout(x, 50));
+    expect(
+      (await m.b.get("/me/notifications"))
+        .json()
+        .items.some((x: { type: string }) => x.type === "order.confirm_needed"),
+    ).toBe(true);
 
+    // Only the assigned mentor can confirm; then it closes at once.
+    const other = await mentor(ctx, "Other Confirmer");
+    expect((await other.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(404);
+    expect((await s.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(403);
+    const ok = await m.b.post(`/mentor/orders/${o.id}/confirm`);
+    expect(ok.statusCode, ok.body).toBe(200);
+    const done = (await s.b.get(`/orders/${o.id}`)).json();
+    expect(done.status).toBe("closed");
+    expect(done.mentorConfirmedAt).toBeTruthy();
+    expect((await m.b.post(`/mentor/orders/${o.id}/confirm`)).statusCode).toBe(409);
+  });
+
+  it("deadline reminders go out once", async () => {
     const w = await working();
     await ctx.db.query("update orders set deadline = now() + interval '5 hours' where id = $1", [
       w.o.id,

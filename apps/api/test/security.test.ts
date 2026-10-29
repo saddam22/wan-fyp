@@ -21,6 +21,10 @@ const PUBLIC = new Set([
   "POST /orders/quote",
   "GET /content/posts",
   "GET /content/:kind/:slug",
+  "GET /content/banners",
+  "GET /leaderboard",
+  "GET /home",
+  "POST /contact",
 ]);
 const SIGNED = new Set([
   "PUT /chat-files/*",

@@ -31,6 +31,13 @@ export const deliveryRoutes: FastifyPluginAsync<Deps> = async (
     return orderDto(db, o, "student");
   });
 
+  /** Second confirmation: the mentor who did the work confirms; the share is released. */
+  app.post<{ Params: { id: string } }>("/mentor/orders/:id/confirm", async (req) => {
+    const s = await requireUser(db, config, hub, req, "/mentor");
+    const o = await delivery.mentorConfirm(req.params.id, s.user.id);
+    return orderDto(db, o, "mentor");
+  });
+
   app.post<{ Params: { id: string } }>("/orders/:id/revisions", async (req, reply) => {
     const s = await requireUser(db, config, hub, req, "/student");
     const b = parse(

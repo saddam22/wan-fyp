@@ -1,5 +1,13 @@
 # Testing Report
 
+## Owner decisions applied (2026-10-29)
+
+| Suite           | Result                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API integration | **100 / 100** (+4): both-sides confirmation (no confirm before approval, staff close and timer refused without the mentor, one reminder, only the assigned mentor, closes at once); contact messages (validation, honeypot, rate limit, handling note); banners (link rules incl. `javascript:` and `//`, order, active only); leaderboard (opt-in, short names, earned points) and homepage figures |
+| Real end-to-end | **8 / 8**: the journey now ends with "Confirm completion" by the mentor (the admin has no close button while it waits); new — contact form → admin inbox → handled; an admin banner becomes the homepage slide; no "demo figures" on the live homepage; a student opts in and appears on the leaderboard as "Rafi X."                                                                                |
+| Demo UI suite   | 401 pass                                                                                                                                                                                                                                                                                                                                                                                             |
+
 ## Phase 8 — staging packaging (2026-10-29)
 
 | Check                                                | Result                                                                                                                                                                                                                                   |

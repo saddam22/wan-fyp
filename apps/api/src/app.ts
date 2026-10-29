@@ -24,6 +24,7 @@ import { ledgerRoutes } from "./routes/ledger.ts";
 import { moneyRoutes } from "./routes/money.ts";
 import { contentRoutes } from "./routes/content.ts";
 import { growthRoutes } from "./routes/growth.ts";
+import { siteRoutes } from "./routes/site.ts";
 import { trustRoutes } from "./routes/trust.ts";
 import { matchingRoutes } from "./routes/matching.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
@@ -158,6 +159,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   await app.register(trustRoutes, deps);
   await app.register(growthRoutes, deps);
   await app.register(contentRoutes, deps);
+  await app.register(siteRoutes, deps);
   app.setNotFoundHandler(async () => {
     throw new ApiError("not_found");
   });

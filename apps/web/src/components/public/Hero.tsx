@@ -137,32 +137,60 @@ function Illustration({ variant }: { variant: number }) {
   );
 }
 
-export function Hero() {
+const TONE_BG: Record<string, string> = {
+  blue: "from-[#0b1b3f] via-[#12306e] to-[#1d4ed8]",
+  violet: "from-[#1e1b4b] via-[#3b2a8c] to-[#6d28d9]",
+  teal: "from-[#052e2b] via-[#0f5d55] to-[#0d9488]",
+  rose: "from-[#3f0b1f] via-[#7a1d3d] to-[#e11d48]",
+  amber: "from-[#3b2205] via-[#7a4a0b] to-[#d97706]",
+};
+
+export interface HeroSlide {
+  pre: string;
+  main: string;
+  post: string;
+  ctaLabel: string | null;
+  ctaHref: string | null;
+  tone: string;
+}
+
+/** `banners`: slides managed by admins (live); the built-in slides otherwise. */
+export function Hero({ banners }: { banners?: HeroSlide[] } = {}) {
   const { t } = useT();
   const router = useRouter();
   const [slide, setSlide] = useState(0);
   const [q, setQ] = useState("");
   const [subject, setSubject] = useState("all");
-  const slides = [
-    {
-      pre: t.home.heroTitle1,
-      main: t.home.heroTitle2,
-      post: t.home.heroTitle3,
-      bg: "from-[#0b1b3f] via-[#12306e] to-[#1d4ed8]",
-    },
-    {
-      pre: "Handwritten",
-      main: "Practical Khata",
-      post: "delivered to your door",
-      bg: "from-[#1e1b4b] via-[#3b2a8c] to-[#6d28d9]",
-    },
-    {
-      pre: "Biology drawings,",
-      main: "Diagrams & Sketches",
-      post: "by verified mentors",
-      bg: "from-[#052e2b] via-[#0f5d55] to-[#0d9488]",
-    },
-  ];
+  const builtIn: { pre: string; main: string; post: string; bg: string; cta?: [string, string] }[] =
+    [
+      {
+        pre: t.home.heroTitle1,
+        main: t.home.heroTitle2,
+        post: t.home.heroTitle3,
+        bg: "from-[#0b1b3f] via-[#12306e] to-[#1d4ed8]",
+      },
+      {
+        pre: "Handwritten",
+        main: "Practical Khata",
+        post: "delivered to your door",
+        bg: "from-[#1e1b4b] via-[#3b2a8c] to-[#6d28d9]",
+      },
+      {
+        pre: "Biology drawings,",
+        main: "Diagrams & Sketches",
+        post: "by verified mentors",
+        bg: "from-[#052e2b] via-[#0f5d55] to-[#0d9488]",
+      },
+    ];
+  const slides = banners?.length
+    ? banners.map((b) => ({
+        pre: b.pre,
+        main: b.main,
+        post: b.post,
+        bg: TONE_BG[b.tone] ?? TONE_BG.blue!,
+        cta: b.ctaLabel && b.ctaHref ? ([b.ctaLabel, b.ctaHref] as [string, string]) : undefined,
+      }))
+    : builtIn;
   useEffect(() => {
     const id = setInterval(() => setSlide((s) => (s + 1) % slides.length), 7000);
     return () => clearInterval(id);
@@ -204,6 +232,15 @@ export function Hero() {
             {s.post}
           </h1>
           <p className="max-w-md text-sm text-blue-100 sm:text-base">{t.home.heroSub}</p>
+          {s.cta && (
+            <a
+              href={s.cta[1]}
+              {...(s.cta[1].startsWith("https://") ? { rel: "noopener noreferrer" } : {})}
+              className="inline-flex h-10 items-center rounded-lg bg-amber-400 px-4 text-sm font-bold text-navy hover:bg-amber-300"
+            >
+              {s.cta[0]}
+            </a>
+          )}
           <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
             {chips.map((c) => (
               <li key={c.label} className="flex items-center gap-1.5">

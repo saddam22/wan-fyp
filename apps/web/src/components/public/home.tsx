@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { LiveHome } from "@/lib/home";
 import {
   Award,
   BadgeCheck,
@@ -81,7 +82,19 @@ function Rank({ i }: { i: number }) {
   );
 }
 
-export function TopStudents({ t, lang }: { t: Messages; lang: Lang }) {
+export function TopStudents({
+  t,
+  lang,
+  live,
+}: {
+  t: Messages;
+  lang: Lang;
+  /** Real opted-in students (the backend); sample students otherwise. */
+  live?: LiveHome["topStudents"];
+}) {
+  const list = live
+    ? live.map((s, i) => ({ id: `${i}`, name: s.name, points: s.points, hue: (i * 67) % 360 }))
+    : fixtures.topStudents;
   return (
     <Card className="p-4">
       <SectionTitle
@@ -91,7 +104,8 @@ export function TopStudents({ t, lang }: { t: Messages; lang: Lang }) {
         icon={<Trophy size={16} className="text-amber-500" />}
       />
       <ol className="space-y-2.5">
-        {fixtures.topStudents.map((s, i) => (
+        {list.length === 0 && <li className="text-[12px] text-muted">No rankings yet.</li>}
+        {list.map((s, i) => (
           <li key={s.id} className="flex items-center gap-2.5">
             <Rank i={i} />
             <Avatar name={s.name} hue={s.hue} size={32} />
@@ -108,7 +122,52 @@ export function TopStudents({ t, lang }: { t: Messages; lang: Lang }) {
   );
 }
 
-export function TopMentors({ t, lang }: { t: Messages; lang: Lang }) {
+export function TopMentors({
+  t,
+  lang,
+  live,
+}: {
+  t: Messages;
+  lang: Lang;
+  live?: LiveHome["topMentors"];
+}) {
+  if (live)
+    return (
+      <Card className="p-4">
+        <SectionTitle
+          title={<span className="text-sm">{t.home.topMentors}</span>}
+          href="/leaderboard"
+          linkLabel={t.home.viewAll}
+          icon={<Award size={16} className="text-brand-600" />}
+        />
+        <ol className="space-y-2.5">
+          {live.length === 0 && <li className="text-[12px] text-muted">No rankings yet.</li>}
+          {live.map((m, i) => (
+            <li key={m.id}>
+              <Link
+                href={`/order/new?mentor=${m.id}`}
+                className="flex items-center gap-2.5 rounded-lg hover:bg-slate-50"
+              >
+                <Rank i={i} />
+                <Avatar name={m.name} hue={(i * 53) % 360} size={32} />
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1 truncate text-[13px] font-semibold text-ink">
+                    <span className="truncate">{m.name}</span>
+                    {m.verified && (
+                      <BadgeCheck size={13} className="shrink-0 fill-brand-600 text-white" />
+                    )}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    {m.subjects[0] ? subjectName(m.subjects[0], lang) : ""}
+                  </p>
+                  {m.rating !== null && <Stars rating={m.rating} size={10} count={m.reviewCount} />}
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </Card>
+    );
   return (
     <Card className="p-4">
       <SectionTitle
@@ -144,7 +203,7 @@ export function TopMentors({ t, lang }: { t: Messages; lang: Lang }) {
   );
 }
 
-export function ReferralCard({ t }: { t: Messages }) {
+export function ReferralCard({ t, live }: { t: Messages; live?: boolean }) {
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-indigo-600 px-4 py-3 text-white">
@@ -155,11 +214,17 @@ export function ReferralCard({ t }: { t: Messages }) {
         </div>
       </div>
       <div className="space-y-2 p-4">
-        <p className="text-[11px] text-muted">{t.home.yourCode}</p>
-        <div className="flex items-center justify-between rounded-lg border border-dashed border-brand-600/50 bg-brand-50 px-2 py-1.5">
-          <span className="font-mono text-sm font-bold tracking-wide text-brand">EKHATA2026</span>
-          <CopyButton text="EKHATA2026" />
-        </div>
+        {!live && (
+          <>
+            <p className="text-[11px] text-muted">{t.home.yourCode}</p>
+            <div className="flex items-center justify-between rounded-lg border border-dashed border-brand-600/50 bg-brand-50 px-2 py-1.5">
+              <span className="font-mono text-sm font-bold tracking-wide text-brand">
+                EKHATA2026
+              </span>
+              <CopyButton text="EKHATA2026" />
+            </div>
+          </>
+        )}
         <Link href="/student/referrals" className={buttonClass("primary", "sm", "w-full")}>
           {t.home.inviteNow}
         </Link>
@@ -168,28 +233,33 @@ export function ReferralCard({ t }: { t: Messages }) {
   );
 }
 
-export function PlatformStats({ t, lang }: { t: Messages; lang: Lang }) {
-  const s = fixtures.platformStats;
+/** Live: exact counts from the database; demo: sample figures (labelled). */
+function statsOf(live: LiveHome["stats"] | undefined, lang: Lang) {
+  const s = live ?? fixtures.platformStats;
+  const n = (v: number) => (live ? formatNumber(v, lang) : `${formatNumber(v, lang)}+`);
+  return {
+    students: n(s.students),
+    mentors: n(s.mentors),
+    orders: n(s.ordersCompleted),
+    positive: s.positivePct === null ? "—" : `${formatNumber(s.positivePct, lang)}%`,
+  };
+}
+
+export function PlatformStats({
+  t,
+  lang,
+  live,
+}: {
+  t: Messages;
+  lang: Lang;
+  live?: LiveHome["stats"];
+}) {
+  const v = statsOf(live, lang);
   const rows: [LucideIcon, string, string, string][] = [
-    [Users, `${formatNumber(s.students, lang)}+`, t.home.students, "bg-amber-100 text-amber-700"],
-    [
-      GraduationCap,
-      `${formatNumber(s.mentors, lang)}+`,
-      t.home.expertMentors,
-      "bg-blue-100 text-blue-700",
-    ],
-    [
-      ClipboardCheck,
-      `${formatNumber(s.ordersCompleted, lang)}+`,
-      t.home.completedOrders,
-      "bg-rose-100 text-rose-700",
-    ],
-    [
-      Star,
-      `${formatNumber(s.positivePct, lang)}%`,
-      t.home.positiveReviews,
-      "bg-green-100 text-green-700",
-    ],
+    [Users, v.students, t.home.students, "bg-amber-100 text-amber-700"],
+    [GraduationCap, v.mentors, t.home.expertMentors, "bg-blue-100 text-blue-700"],
+    [ClipboardCheck, v.orders, t.home.completedOrders, "bg-rose-100 text-rose-700"],
+    [Star, v.positive, t.home.positiveReviews, "bg-green-100 text-green-700"],
   ];
   return (
     <Card className="p-4">
@@ -210,9 +280,11 @@ export function PlatformStats({ t, lang }: { t: Messages; lang: Lang }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-[10px] text-muted">
-        Demo figures — computed from live data in production.
-      </p>
+      {!live && (
+        <p className="mt-3 text-[10px] text-muted">
+          Demo figures — computed from live data in production.
+        </p>
+      )}
     </Card>
   );
 }
@@ -412,12 +484,21 @@ export function LatestAssignments({ t, lang }: { t: Messages; lang: Lang }) {
   );
 }
 
-export function Testimonials({ t }: { t: Messages }) {
+export function Testimonials({
+  t,
+  live,
+}: {
+  t: Messages;
+  /** Real published reviews only — no sample testimonials with the backend. */
+  live?: LiveHome["testimonials"];
+}) {
+  const list = live ? live.map((x, i) => ({ ...x, hue: (i * 71) % 360 })) : fixtures.testimonials;
+  if (live && list.length === 0) return null;
   return (
     <section>
       <SectionTitle title={t.home.testimonials} />
       <ul className="grid gap-3 md:grid-cols-3">
-        {fixtures.testimonials.map((x) => (
+        {list.map((x) => (
           <li key={x.id} className="card flex flex-col gap-3 p-4">
             <MessageSquareText size={20} className="text-brand-600" />
             <p className="flex-1 text-sm text-ink">“{x.text}”</p>
@@ -438,12 +519,27 @@ export function Testimonials({ t }: { t: Messages }) {
   );
 }
 
-export function LatestBlog({ t, lang }: { t: Messages; lang: Lang }) {
+export function LatestBlog({
+  t,
+  lang,
+  live,
+}: {
+  t: Messages;
+  lang: Lang;
+  live?: LiveHome["posts"];
+}) {
+  const list = live
+    ? live.map((p) => ({
+        ...p,
+        hue: [...p.slug].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7),
+      }))
+    : fixtures.blogPosts;
+  if (live && list.length === 0) return null;
   return (
     <section>
       <SectionTitle title={t.home.latestBlog} href="/blog" linkLabel={t.home.viewAll} />
       <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-        {fixtures.blogPosts.map((p) => (
+        {list.map((p) => (
           <li key={p.slug}>
             <Link href={`/blog/${p.slug}`} className="card group block overflow-hidden">
               <BlogCover hue={p.hue} tag={p.tag} />
@@ -487,13 +583,21 @@ export function BlogCover({ hue, tag, tall }: { hue: number; tag: string; tall?:
   );
 }
 
-export function StatsBand({ t, lang }: { t: Messages; lang: Lang }) {
-  const s = fixtures.platformStats;
+export function StatsBand({
+  t,
+  lang,
+  live,
+}: {
+  t: Messages;
+  lang: Lang;
+  live?: LiveHome["stats"];
+}) {
+  const v = statsOf(live, lang);
   const items: [LucideIcon, string, string][] = [
-    [ClipboardCheck, `${formatNumber(s.ordersCompleted, lang)}+`, t.home.statAssignments],
-    [BadgeCheck, `${formatNumber(s.mentors, lang)}+`, t.home.statMentors],
-    [Users, `${formatNumber(s.students, lang)}+`, t.home.statStudents],
-    [Star, `${formatNumber(s.positivePct, lang)}%`, t.home.statReviews],
+    [ClipboardCheck, v.orders, t.home.statAssignments],
+    [BadgeCheck, v.mentors, t.home.statMentors],
+    [Users, v.students, t.home.statStudents],
+    [Star, v.positive, t.home.statReviews],
     [Headphones, "24/7", t.home.statSupport],
     [Globe2, t.home.statCountries, t.home.statCountriesSub],
   ];

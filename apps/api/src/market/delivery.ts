@@ -46,6 +46,14 @@ export async function activateRevisionTx(
 }
 
 /** Delivery, approval, revisions, disputes and closure. Every step is a guarded transition. */
+/** Closing inside a transaction: status, the mentor's share made available, the event. */
+async function closeTx(c: Queryable, o: OrderRow, actorId: string | null, note: string) {
+  const row = await transition(c, o, ["approved"], "closed", { closed_at: new Date() });
+  await postOrderAvailable(c, row, actorId);
+  await addEvent(c, o.id, { kind: "closed", status: "closed", actorId, note });
+  return row;
+}
+
 export function createDelivery(db: Db, notifications: Notifications, logger: Logger) {
   const notify = async (
     type: string,
@@ -348,30 +356,78 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
       return o;
     },
 
+    /**
+     * Closes an approved order: the mentor's share becomes available. Both sides must have
+     * confirmed — the student by approving, the mentor by confirming completion.
+     */
     async close(orderId: string, actorId: string | null, note: string) {
       const o = await tx(db, async (c) => {
         const o = await loadOrder(c, orderId, true);
         if (!o) throw new ApiError("not_found", "Order not found");
-        const row = await transition(c, o, ["approved"], "closed", { closed_at: new Date() });
-        await postOrderAvailable(c, row, actorId);
-        await addEvent(c, o.id, { kind: "closed", status: "closed", actorId, note });
-        return row;
+        if (o.status === "approved" && !o.mentor_confirmed_at)
+          throw new ApiError("conflict", "Waiting for the mentor to confirm completion");
+        return closeTx(c, o, actorId, note);
       });
       await notify("order.closed", o, "mentor");
+      await notify("order.closed", o, "student");
       return o;
     },
 
-    /** Auto-close approved orders and remind mentors of deadlines. Run periodically. */
+    /** The mentor confirms completion after the student approved: the order closes now. */
+    async mentorConfirm(orderId: string, mentorId: string) {
+      const o = await tx(db, async (c) => {
+        const o = await loadOrder(c, orderId, true);
+        if (!o || o.mentor_id !== mentorId) throw new ApiError("not_found", "Order not found");
+        if (o.status !== "approved")
+          throw new ApiError(
+            "conflict",
+            o.status === "closed"
+              ? "Already confirmed"
+              : "You can confirm once the student has approved the work",
+          );
+        await c.query("update orders set mentor_confirmed_at = now() where id = $1", [o.id]);
+        await addEvent(c, o.id, {
+          kind: "mentor_confirmed",
+          status: "approved",
+          actorId: mentorId,
+          note: "Mentor confirmed completion",
+        });
+        return closeTx(
+          c,
+          { ...o, mentor_confirmed_at: new Date() },
+          mentorId,
+          "Both sides confirmed — the mentor's share is released",
+        );
+      });
+      await notify("order.closed", o, "mentor");
+      await notify("order.closed", o, "student");
+      return o;
+    },
+
+    /**
+     * Reminds mentors to confirm approved orders (once, after a day), closes confirmed ones
+     * left open, and reminds mentors of deadlines. Run periodically. Nothing is released
+     * without both confirmations.
+     */
     async sweep() {
       const settings = await getSettings(db);
       const due = (
         await db.query<{ id: string }>(
-          "select id from orders where status = 'approved' and approved_at < now() - make_interval(days => $1)",
+          `select id from orders where status = 'approved' and mentor_confirmed_at is not null
+             and approved_at < now() - make_interval(days => $1)`,
           [settings.auto_close_days],
         )
       ).rows;
       for (const d of due)
         await api.close(d.id, null, "Closed automatically").catch(() => undefined);
+      const unconfirmed = (
+        await db.query<OrderRow>(
+          `update orders set confirm_reminded_at = now()
+            where status = 'approved' and mentor_confirmed_at is null and confirm_reminded_at is null
+              and approved_at < now() - interval '1 day' returning *`,
+        )
+      ).rows;
+      for (const o of unconfirmed) await notify("order.confirm_needed", o, "mentor");
       const soon = (
         await db.query<OrderRow>(
           `update orders set deadline_reminded_at = now()
@@ -384,7 +440,7 @@ export function createDelivery(db: Db, notifications: Notifications, logger: Log
         await notify("order.deadline", o, "mentor", {
           hours: Math.max(0, Math.round((o.deadline.getTime() - Date.now()) / 3600_000)),
         });
-      return { closed: due.length, reminded: soon.length };
+      return { closed: due.length, reminded: soon.length, confirmReminded: unconfirmed.length };
     },
   };
   return api;

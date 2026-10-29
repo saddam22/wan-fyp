@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { Field } from "@/components/ui";
-import { useDemoToast } from "@/components/ui/client";
+import { useDemoToast, useToast } from "@/components/ui/client";
 
-export function ContactForm() {
+/** `live`: sent to EduKhata's inbox (admins); demo: a toast only. */
+export function ContactForm({ live }: { live?: boolean } = {}) {
+  const toast = useToast();
+  const [website, setWebsite] = useState("");
+  const [busy, setBusy] = useState(false);
   const [f, setF] = useState({ name: "", contact: "", topic: "order", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const demo = useDemoToast();
@@ -13,7 +17,7 @@ export function ContactForm() {
     <form
       noValidate
       className="space-y-4"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         const er: Record<string, string> = {};
         if (f.name.trim().length < 2) er.name = "Enter your name";
@@ -25,6 +29,25 @@ export function ContactForm() {
         if (f.message.trim().length < 10) er.message = "Write at least 10 characters";
         setErrors(er);
         if (Object.keys(er).length) return;
+        if (live) {
+          setBusy(true);
+          const res = await fetch("/api/contact", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ ...f, website }),
+          }).catch(() => null);
+          setBusy(false);
+          if (!res?.ok) {
+            const msg = (await res?.json().catch(() => null))?.error?.message;
+            return setErrors({ message: msg ?? "Couldn't send — please try again" });
+          }
+          setF({ name: "", contact: "", topic: "order", message: "" });
+          return toast({
+            tone: "success",
+            title: "Message sent",
+            body: "The EduKhata team will reply by email or phone.",
+          });
+        }
         setF({ name: "", contact: "", topic: "order", message: "" });
         demo("Message sent to support");
       }}
@@ -75,7 +98,21 @@ export function ContactForm() {
           maxLength={2000}
         />
       </Field>
-      <button className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand">
+      {/* Left empty by people; bots fill it. */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="hidden"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+      />
+      <button
+        disabled={busy}
+        className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand"
+      >
         <Send size={16} /> Send message
       </button>
     </form>
