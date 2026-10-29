@@ -351,6 +351,21 @@ export const paymentRoutes: FastifyPluginAsync<Deps> = async (
     },
   );
 
+  /** Payments of my orders, or (guardians) of children who allow it. */
+  app.get("/me/payments", async (req) => {
+    const s = await requireUser(db, config, hub, req);
+    const rows = (
+      await db.query<PaymentRow>(
+        `select p.* from payments p join orders o on o.id = p.order_id
+          where p.status <> 'cancelled' and (o.student_id = $1 or p.payer_id = $1 or o.student_id in (
+            select student_id from guardian_links where guardian_id = $1 and (view_payments or pay_on_behalf)))
+          order by p.created_at desc limit 200`,
+        [s.user.id],
+      )
+    ).rows;
+    return Promise.all(rows.map((p) => paymentDto(db, p, "student")));
+  });
+
   // ---- Verification (accountant) ------------------------------------------------------
 
   app.get<{ Querystring: { status?: string } }>("/accountant/payments", async (req) => {

@@ -3,11 +3,11 @@ import { grant, signIn, student, useHarness } from "./harness.ts";
 import { accountant, deliverWork, paidOrder, type Person } from "./market.ts";
 
 const ctx = useHarness();
-const bal = async (p: Person) =>
+const bal = async (p: Pick<Person, "b">) =>
   (await p.b.get("/accountant/balances")).json() as Record<string, number>;
 const earnings = async (m: Person) =>
   (await m.b.get("/mentor/earnings")).json() as { pendingMinor: number; availableMinor: number };
-const refundsOf = async (p: Person, orderId: string) =>
+const refundsOf = async (p: Pick<Person, "b">, orderId: string) =>
   (
     (await p.b.get("/accountant/refunds")).json() as {
       id: string;
