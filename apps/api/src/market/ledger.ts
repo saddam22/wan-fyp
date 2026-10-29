@@ -12,6 +12,7 @@ export const acct = {
   commission: "revenue:commission",
   refunds: "refunds:payable",
   payouts: "payouts:payable",
+  promotions: "revenue:promotions",
 };
 
 /**
@@ -28,6 +29,7 @@ export async function post(
     paymentId?: string | null;
     refundId?: string | null;
     payoutId?: string | null;
+    promotionId?: string | null;
     actorId?: string | null;
   },
   entries: Entry[],
@@ -37,8 +39,8 @@ export async function post(
     throw new ApiError("server", "Unbalanced ledger posting");
   if (lines.length < 2) return null;
   const r = await c.query<{ id: string }>(
-    `insert into ledger_transactions (idempotency_key, kind, memo, order_id, payment_id, refund_id, payout_id, actor_id)
-     values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (idempotency_key) do nothing returning id`,
+    `insert into ledger_transactions (idempotency_key, kind, memo, order_id, payment_id, refund_id, payout_id, promotion_id, actor_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (idempotency_key) do nothing returning id`,
     [
       t.key,
       t.kind,
@@ -47,6 +49,7 @@ export async function post(
       t.paymentId ?? null,
       t.refundId ?? null,
       t.payoutId ?? null,
+      t.promotionId ?? null,
       t.actorId ?? null,
     ],
   );

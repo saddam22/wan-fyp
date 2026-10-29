@@ -4,6 +4,7 @@ import type { Queryable } from "../db.ts";
 import type { Deps } from "../deps.ts";
 import { ApiError } from "../lib/errors.ts";
 import { requireUser } from "../lib/session.ts";
+import { badgesFor } from "../market/badges.ts";
 import { LEVELS, WORK_TYPES } from "./catalog.ts";
 
 const profileBody = z.object({
@@ -34,6 +35,7 @@ interface ProfileRow {
   completed_orders: number;
   rating: number | null;
   review_count: number;
+  verified: boolean;
 }
 
 /** Active orders count against capacity; completed ones are the public track record. */
@@ -44,7 +46,8 @@ export const PROFILE_SQL = `select u.id as user_id, u.name, coalesce(p.headline,
     (select count(*)::int from orders o where o.mentor_id = u.id and o.status in ('assigned', 'in_progress', 'delivered', 'revision_requested')) as active_orders,
     (select count(*)::int from orders o where o.mentor_id = u.id and o.status in ('approved', 'closed')) as completed_orders,
     (select round(avg(v.rating), 1)::float from reviews v where v.mentor_id = u.id and v.status = 'published') as rating,
-    (select count(*)::int from reviews v where v.mentor_id = u.id and v.status = 'published') as review_count
+    (select count(*)::int from reviews v where v.mentor_id = u.id and v.status = 'published') as review_count,
+    coalesce(p.verified_at is not null, false) as verified
   from users u left join mentor_profiles p on p.user_id = u.id`;
 
 const toProfile = (r: ProfileRow) => ({
@@ -63,12 +66,13 @@ const toProfile = (r: ProfileRow) => ({
   completedOrders: r.completed_orders,
   rating: r.rating,
   reviewCount: r.review_count,
+  verified: r.verified,
 });
 
 async function profileOf(db: Queryable, userId: string) {
   const r = (await db.query<ProfileRow>(`${PROFILE_SQL} where u.id = $1`, [userId])).rows[0];
   if (!r) throw new ApiError("not_found");
-  return toProfile(r);
+  return { ...toProfile(r), badges: (await badgesFor(db, [userId])).get(userId) ?? [] };
 }
 
 /** Mentor profiles: the mentor edits their own; anyone can browse active mentors. */
@@ -126,21 +130,46 @@ export const mentorRoutes: FastifyPluginAsync<Deps> = async (app, { db, config, 
     return profileOf(db, s.user.id);
   });
 
-  /** Public directory: active mentors only, names and work details (no contact data). */
+  const DIRECTORY = `${PROFILE_SQL}
+    where u.status = 'active' and exists (select 1 from user_roles r where r.user_id = u.id and r.role = 'mentor')
+      and p.user_id is not null`;
+  const publicOf = async (rows: ProfileRow[]) => {
+    const badges = await badgesFor(
+      db,
+      rows.map((r) => r.user_id),
+    );
+    return rows.map((r) => {
+      const { capacity: _c, activeOrders: _a, ...pub } = toProfile(r);
+      return { ...pub, badges: badges.get(r.user_id) ?? [] };
+    });
+  };
+
+  /**
+   * Public directory in organic order: available first, then verified, rating, track
+   * record. Paid promotions never change this order (they have their own labelled list).
+   */
   app.get<{ Querystring: { subject?: string; workType?: string } }>("/mentors", async (req) => {
     const rows = (
       await db.query<ProfileRow>(
-        `${PROFILE_SQL}
-          where u.status = 'active' and exists (select 1 from user_roles r where r.user_id = u.id and r.role = 'mentor')
-            and p.user_id is not null
-            and ($1::text is null or $1 = any(p.subjects)) and ($2::text is null or $2 = any(p.work_types))
-          order by p.available desc, u.name limit 100`,
+        `select * from (${DIRECTORY}
+            and ($1::text is null or $1 = any(p.subjects)) and ($2::text is null or $2 = any(p.work_types))) d
+          order by available desc, verified desc, coalesce(rating, 0) desc, completed_orders desc, name limit 100`,
         [req.query.subject ?? null, req.query.workType ?? null],
       )
     ).rows;
-    return rows.map((r) => {
-      const { capacity: _c, activeOrders: _a, ...pub } = toProfile(r);
-      return pub;
-    });
+    return publicOf(rows);
+  });
+
+  /** Mentors with an active paid boost — shown separately, labelled "Featured · paid". */
+  app.get("/mentors/featured", async () => {
+    const rows = (
+      await db.query<ProfileRow>(
+        `select * from (${DIRECTORY}
+            and exists (select 1 from mentor_promotions m where m.mentor_id = u.id and m.kind = 'boost'
+              and m.status = 'active' and now() between m.starts_at and m.ends_at)) d
+          order by random() limit 6`,
+      )
+    ).rows;
+    return publicOf(rows);
   });
 };

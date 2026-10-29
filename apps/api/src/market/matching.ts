@@ -38,6 +38,7 @@ export async function candidates(
   limit = 50,
   includeOffered = false,
 ): Promise<Candidate[]> {
+  const verifiedOnly = (await getSettings(db)).require_verified_mentors;
   const rows = (
     await db.query<{
       id: string;
@@ -48,9 +49,10 @@ export async function candidates(
       rating: string | null;
       on_time: string | null;
       last_assigned_at: Date | null;
+      verified: boolean;
     }>(
       `with stats as (
-         select u.id, u.name, p.capacity, p.last_assigned_at,
+         select u.id, u.name, p.capacity, p.last_assigned_at, p.verified_at is not null as verified,
            (select count(*)::int from orders x where x.mentor_id = u.id and x.status = any($5::text[])) as active,
            (select count(*)::int from orders x where x.mentor_id = u.id and x.status in ('approved', 'closed')) as completed,
            (select avg(rating) from reviews v where v.mentor_id = u.id and v.status = 'published') as rating,
@@ -63,6 +65,7 @@ export async function candidates(
            and $2 = any(p.subjects) and $3 = any(p.work_types)
            and (cardinality(p.levels) = 0 or $4 = any(p.levels))
            and ($7 or not exists (select 1 from order_offers f where f.order_id = $6 and f.mentor_id = u.id))
+           and (not $8 or p.verified_at is not null)
        )
        select * from stats where active < capacity`,
       [
@@ -73,6 +76,7 @@ export async function candidates(
         [...ACTIVE_STATUSES],
         o.id,
         includeOffered,
+        verifiedOnly,
       ],
     )
   ).rows;
@@ -84,7 +88,9 @@ export async function candidates(
       0.4 * ((rating ?? 3.5) / 5) +
       0.3 * (onTime ?? 0.8) +
       0.2 * (1 - r.active / r.capacity) +
-      0.1 * (Math.min(r.completed, 20) / 20);
+      0.1 * (Math.min(r.completed, 20) / 20) +
+      // Verified identity and qualifications (checked by staff). Paid promotions never count.
+      (r.verified ? 0.1 : 0);
     return {
       c: {
         id: r.id,

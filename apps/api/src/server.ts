@@ -1,3 +1,4 @@
+import { sweepPromotions } from "./routes/growth.ts";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { createDb, migrate } from "./db.ts";
@@ -67,6 +68,9 @@ if (notifications.pushEnabled) {
 const matchingSweep = setInterval(() => {
   void app.edkDeps.matching.sweep().catch((e: unknown) => console.error("[matching]", e));
   void app.edkDeps.delivery.sweep().catch((e: unknown) => console.error("[delivery]", e));
+  void sweepPromotions(app.edkDeps.db, app.edkDeps.notifications).catch((e: unknown) =>
+    console.error("[promotions]", e),
+  );
 }, 30_000);
 matchingSweep.unref();
 // Unsent chat uploads older than a day.

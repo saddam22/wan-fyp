@@ -38,6 +38,14 @@ export const SETTINGS_SCHEMA = z.object({
   min_payout_minor: z.number().int().min(100).max(10_000_000),
   /** The mentor is reminded this long before the deadline. */
   deadline_reminder_hours: z.number().int().min(1).max(168),
+  /** Only verified mentors get order offers (recommended once enough mentors are verified). */
+  require_verified_mentors: z.boolean(),
+  /** Days before a failed skill test can be retaken. */
+  skill_retake_days: z.number().int().min(0).max(90),
+  /** Prices of paid promotions (paid from the mentor's available balance). */
+  boost_7d_minor: z.number().int().min(0).max(10_000_000),
+  pro_monthly_minor: z.number().int().min(0).max(10_000_000),
+  pro_yearly_minor: z.number().int().min(0).max(100_000_000),
 });
 export type Settings = z.infer<typeof SETTINGS_SCHEMA>;
 export type SettingKey = keyof Settings;

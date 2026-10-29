@@ -21,6 +21,7 @@ import {
   transition,
   type OrderRow,
 } from "../market/orders.ts";
+import { evaluateCoupon } from "../market/coupons.ts";
 import { createRefundTx, notifyRefundDue } from "../market/refunds.ts";
 import { LEVELS, WORK_TYPES } from "./catalog.ts";
 
@@ -59,6 +60,7 @@ const quoteBody = z.object({
   workType: z.enum(WORK_TYPES),
   pages: z.number().int().min(1).max(300),
   deliveryMethod: z.enum(["digital", "courier"]),
+  couponCode: z.string().trim().max(24).optional(),
 });
 const createBody = quoteBody.extend({
   categorySlug: z.string().max(40),
@@ -105,12 +107,15 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
   app.post("/orders/quote", async (req) => {
     const b = parse(quoteBody, req.body);
     const q = await quote(db, b);
+    // Per-person limits are checked when the order is placed (the quote needs no sign-in).
+    const d = b.couponCode ? await evaluateCoupon(db, b.couponCode, q.totalMinor) : null;
     return {
       currency: q.currency,
       perPageMinor: q.perPageMinor,
       baseMinor: q.baseMinor,
       courierMinor: q.courierMinor,
-      totalMinor: q.totalMinor,
+      ...(d ? { discountMinor: d.discountMinor, couponCode: d.coupon.code } : {}),
+      totalMinor: q.totalMinor - (d?.discountMinor ?? 0),
       freeRevisions: q.settings.free_revisions,
     };
   });
@@ -156,11 +161,16 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
         );
     }
     const o = await tx(db, async (c) => {
+      // The discount is shared by the platform and the mentor in the order's split (Q9).
+      const d = b.couponCode
+        ? await evaluateCoupon(c, b.couponCode, q.totalMinor, { userId: s.user.id, lock: true })
+        : null;
       const row = (
         await c.query<OrderRow>(
           `insert into orders (student_id, preferred_mentor_id, category_slug, subject_id, level, work_type, title, instructions, pages,
-             delivery_method, delivery_address, deadline, price_minor, currency, commission_rate, free_revisions)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,
+             delivery_method, delivery_address, deadline, price_minor, currency, commission_rate, free_revisions,
+             list_price_minor, discount_minor, coupon_id)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) returning *`,
           [
             s.user.id,
             b.preferredMentorId ?? null,
@@ -174,13 +184,21 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
             b.deliveryMethod,
             b.deliveryMethod === "courier" ? b.deliveryAddress : null,
             deadline,
-            q.totalMinor,
+            q.totalMinor - (d?.discountMinor ?? 0),
             q.currency,
             q.settings.commission_rate,
             q.settings.free_revisions,
+            q.totalMinor,
+            d?.discountMinor ?? 0,
+            d?.coupon.id ?? null,
           ],
         )
       ).rows[0]!;
+      if (d)
+        await c.query(
+          "insert into coupon_redemptions (coupon_id, user_id, order_id, discount_minor) values ($1, $2, $3, $4)",
+          [d.coupon.id, s.user.id, row.id, d.discountMinor],
+        );
       await addEvent(c, row.id, {
         kind: "created",
         status: row.status,
@@ -305,6 +323,11 @@ export const orderRoutes: FastifyPluginAsync<Deps> = async (
           "A payment is being checked — wait for the decision, then cancel",
         );
       const row = await transition(c, o, from, "cancelled", { cancelled_at: new Date() });
+      // A coupon used on a cancelled order can be used again.
+      await c.query(
+        "update coupon_redemptions set status = 'released' where order_id = $1 and status = 'active'",
+        [o.id],
+      );
       await c.query(
         "update payments set status = 'cancelled', updated_at = now() where order_id = $1 and status in ('pending', 'rejected')",
         [o.id],

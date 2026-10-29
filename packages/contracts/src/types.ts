@@ -139,6 +139,8 @@ export interface Order {
   mentorName?: string;
   status: OrderStatus;
   price: Money;
+  /** Coupon discount already taken off `price`. */
+  discount?: Money;
   commissionRate: number;
   createdAt: string;
   deadline: string;

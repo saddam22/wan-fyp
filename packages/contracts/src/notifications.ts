@@ -156,6 +156,40 @@ const order = (
 
 const ORDER_TYPES: NotificationTypeSpec[] = [
   order(
+    "verification.submitted",
+    () => "A mentor asked for verification",
+    () => "একজন মেন্টর যাচাইয়ের আবেদন করেছেন",
+    { channels: ["in_app"] },
+  ),
+  order(
+    "verification.approved",
+    () => "You are verified",
+    () => "আপনি যাচাইকৃত",
+    { mandatory: true },
+  ),
+  order(
+    "verification.rejected",
+    (d) => `Verification not approved: ${s(d.note)}`,
+    (d) => `যাচাই অনুমোদন হয়নি: ${s(d.note)}`,
+    { mandatory: true },
+  ),
+  order(
+    "promotion.expiring",
+    () => "Your promotion ends soon",
+    () => "আপনার প্রমোশন শীঘ্রই শেষ হবে",
+  ),
+  order(
+    "content.submitted",
+    () => "A blog post waits for review",
+    () => "একটি ব্লগ পোস্ট রিভিউয়ের অপেক্ষায়",
+    { channels: ["in_app"] },
+  ),
+  order(
+    "content.reviewed",
+    (d) => (d.published ? "Your post is published" : `Your post needs changes: ${s(d.note)}`),
+    (d) => (d.published ? "আপনার পোস্ট প্রকাশিত হয়েছে" : `আপনার পোস্টে পরিবর্তন দরকার: ${s(d.note)}`),
+  ),
+  order(
     "refund.decided",
     () => "A refund is due — please check",
     () => "একটি রিফান্ড দিতে হবে — দেখুন",

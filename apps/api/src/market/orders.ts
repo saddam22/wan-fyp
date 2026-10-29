@@ -33,6 +33,8 @@ export interface OrderRow {
   delivery_address: string | null;
   deadline: Date;
   price_minor: string;
+  list_price_minor: string | null;
+  discount_minor: string;
   currency: string;
   commission_rate: string;
   free_revisions: number;
@@ -262,6 +264,9 @@ export async function orderDto(db: Queryable, o: OrderRow, rel: Relation) {
     ...(o.mentor_id ? { mentorId: o.mentor_id, mentorName: nm.get(o.mentor_id) ?? "" } : {}),
     status: o.status,
     price: { amountMinor: price, currency: o.currency },
+    ...(Number(o.discount_minor) > 0
+      ? { discount: { amountMinor: Number(o.discount_minor), currency: o.currency } }
+      : {}),
     commissionRate: rate,
     // The mentor and staff see the mentor's share; students and guardians see the price.
     ...(rel === "mentor" || rel === "staff"
