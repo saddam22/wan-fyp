@@ -93,6 +93,16 @@ if ! git -C wan-fyp submodule update --init --recursive -q; then
   echo "repository list on GitHub (Settings → Developer settings → Fine-grained tokens → Edit), then run again."
   exit 1
 fi
+# An earlier interrupted run can leave a module folder empty; fetch those again.
+for m in chat calling social ads jobs; do
+  if [[ ! -f wan-fyp/modules/$m/package.json ]]; then
+    echo "modules/$m is empty: fetching it again"
+    git -C wan-fyp submodule deinit -q -f "modules/$m" || true
+    rm -rf "wan-fyp/.git/modules/modules/$m"
+    git -C wan-fyp submodule update --init --recursive -q "modules/$m"
+  fi
+  [[ -f wan-fyp/modules/$m/package.json ]] || { echo "modules/$m is still missing; check the token's repository list."; exit 1; }
+done
 
 DIR="$ROOT/wan-fyp/deploy/wanfyp.online"
 cd "$DIR"
