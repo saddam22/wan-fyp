@@ -46,7 +46,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const databaseUrl = env.DATABASE_URL ?? "";
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
   const webUrl = trim(env.WEB_URL ?? "http://localhost:3200");
-  const hubUrl = trim(env.WAN_HUB_URL ?? "http://localhost:4100");
+  // The hub's base URL; the issuer is <hubUrl>/oidc. A value pasted with /oidc already on it would
+  // make discovery ask <hub>/oidc/oidc/... (404), so that suffix is dropped.
+  const hubUrl = trim(trim(env.WAN_HUB_URL ?? "http://localhost:4100").replace(/\/oidc$/, ""));
   const clientSecret = env.EDK_CLIENT_SECRET ?? (production ? "" : DEV_CLIENT_SECRET);
   if (clientSecret.length < 32) throw new Error("EDK_CLIENT_SECRET must be 32+ characters");
   const chatSecret = env.CHAT_SECRET || (production ? "" : DEV_CHAT_SECRET);
