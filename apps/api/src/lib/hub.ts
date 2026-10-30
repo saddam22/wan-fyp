@@ -71,9 +71,11 @@ export function createHub(config: Config): Hub {
       )
       .catch((error: unknown) => {
         discovered = null; // retry on the next sign-in
+        // Say what was asked and what came back (a redirect or 404 means WAN_HUB_URL is wrong).
+        const status = (error as { cause?: { status?: unknown } }).cause?.status;
         throw new ApiError(
           "hub_unavailable",
-          `WAN Identity Hub is not reachable: ${(error as Error).message}`,
+          `WAN Identity Hub is not reachable at ${config.hubUrl}/oidc/.well-known/openid-configuration: ${(error as Error).message}${typeof status === "number" ? ` (HTTP ${status})` : ""}`,
         );
       });
     return discovered;
