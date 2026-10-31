@@ -1,0 +1,78 @@
+# EduKhata in production (deploy/setup.sh). PostgreSQL + API + web on one VPS.
+# The web app listens on 127.0.0.1:${WEB_PORT}; the outer web server (CyberPanel/OpenLiteSpeed)
+# terminates HTTPS for the domain and proxies to it. The API is reachable only through the web
+# app's /api rewrite. Sign-in: WAN ID (id.wanbd.online) only.
+name: edukhata
+
+x-public: &public
+  NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
+  NEXT_PUBLIC_WAN_HUB_URL: ${WAN_HUB_URL:?set WAN_HUB_URL in .env}
+  NEXT_PUBLIC_ICTSPARK_URL: ${ICTSPARK_URL:-https://ictspark.online}
+  NEXT_PUBLIC_DEMO_MODE: "false"
+  NEXT_PUBLIC_ADS_URL: ${ADS_URL:-}
+  NEXT_PUBLIC_ADS_APP_KEY: ${ADS_APP_KEY:-}
+  API_INTERNAL_URL: http://api:4200
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: edukhata
+      POSTGRES_USER: edukhata
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edukhata -d edukhata"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    image: edukhata-app:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args: *public
+    command: ["pnpm", "--filter", "@edukhata/api", "start"]
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "4200"
+      DATABASE_URL: postgresql://edukhata:${DB_PASSWORD}@db:5432/edukhata
+      WEB_URL: ${PUBLIC_URL}
+      # Only the web container (Docker network) talks to the API.
+      TRUST_PROXY: loopback,uniquelocal
+      CHAT_UPLOAD_DIR: /data/chat-uploads
+      ORDER_FILES_DIR: /data/order-files
+    volumes: [apidata:/data]
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4200/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      retries: 30
+    restart: unless-stopped
+
+  web:
+    image: edukhata-app:latest
+    pull_policy: never
+    command: ["pnpm", "--filter", "@edukhata/web", "start"]
+    environment:
+      <<: *public
+      NODE_ENV: production
+      AUTH_MODE: wan
+    ports: ["127.0.0.1:${WEB_PORT:-3210}:3200"]
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  apidata:

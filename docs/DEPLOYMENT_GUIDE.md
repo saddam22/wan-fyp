@@ -1,7 +1,18 @@
 # Deployment Guide
 
-Not applicable yet. Written in Phase 8 (staging, environment validation, domain/SSL, backup/restore, rollback).
-Nothing is deployed. Production deployment requires the owner's explicit approval.
+## Production: wanfyp.online (2026-10-31)
+
+Approved by the owner. Docker Compose on the shared CyberPanel VPS, sign-in through the central
+WAN ID hub (https://id.wanbd.online, client `edukhata`). Files in `deploy/`:
+
+- `deploy/Dockerfile` — one image (pnpm workspace incl. submodules) for the API and the web app.
+- `deploy/compose.yml` — PostgreSQL 16, API (`:4200`, internal), web (`127.0.0.1:${WEB_PORT}`, default 3210).
+- `deploy/setup.sh <domain>` — first run: creates `deploy/.env` (DB password, chat secret), connects the
+  hub with `wan-identity-hub/deploy/add-site.sh edukhata`, builds, starts, adds the LiteSpeed proxy
+  (incl. WebSockets for chat and calls) to the domain's vhost. Later runs: `./setup.sh` pulls,
+  rebuilds and restarts.
+- First super admin: `docker compose exec api pnpm --filter @edukhata/api grant-role <email> super_admin`.
+- Not set up yet: TURN for calls on mobile networks, Web Push keys, backups of the `pgdata`/`apidata` volumes.
 
 ## Notes collected so far (Phases 2–3)
 
